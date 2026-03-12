@@ -29,9 +29,9 @@
 
 <p align="center">
   <a href="https://getrallied.com/getrallied-intro-v9.mp4">
-    <img src=".github/social-preview.png" alt="Watch the intro" width="600">
+    <img src=".github/video-thumb.jpg" alt="GetRallied — Takes Your Idea" width="600">
     <br>
-    <sub>▶ Watch the intro video</sub>
+    <strong>▶ PLAY</strong>
   </a>
 </p>
 
