@@ -120,6 +120,12 @@ db.exec(`
   );
 `);
 
+// HTML escape helper for safe template literal injection
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function genId(len = 10) {
   return crypto.randomBytes(Math.ceil(len * 0.75)).toString('hex').slice(0, len);
 }
@@ -197,7 +203,7 @@ app.use((req, res, next) => {
 });
 
 // Apply CSRF to all state-changing routes
-app.use(['/create', '/claim', '/signup', '/signin', '/notify', '/account', '/organizer'], csrfMiddleware);
+app.use(['/create', '/claim', '/signup', '/signin', '/notify', '/account', '/organizer', '/forgot-password', '/reset-password'], csrfMiddleware);
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 function signPayload(payload) {
@@ -313,9 +319,9 @@ async function checkAndSendMilestones(eventId) {
   // Check 50% milestone
   if (fillPercentage >= 50 && !sent.includes('50')) {
     await sendEmail(event.organizer_email,
-      `🎉 ${event.title} is halfway there!`,
+      `🎉 ${esc(event.title)} is halfway there!`,
       `<h2>🎉 Congratulations!</h2>
-       <p>Your event <strong>${event.title}</strong> just hit the <strong>50% mark</strong>!</p>
+       <p>Your event <strong>${esc(event.title)}</strong> just hit the <strong>50% mark</strong>!</p>
        <p>${totalClaimed} out of ${totalNeeded} volunteer spots are now filled.</p>
        <p>Keep the momentum going! <a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
     );
@@ -325,9 +331,9 @@ async function checkAndSendMilestones(eventId) {
   // Check "almost full" milestone (3 or fewer spots remaining)
   if (spotsRemaining > 0 && spotsRemaining <= 3 && !sent.includes('almost')) {
     await sendEmail(event.organizer_email,
-      `🔥 ${event.title} is almost fully staffed!`,
+      `🔥 ${esc(event.title)} is almost fully staffed!`,
       `<h2>🔥 Almost there!</h2>
-       <p>Your event <strong>${event.title}</strong> is <strong>almost fully staffed</strong>!</p>
+       <p>Your event <strong>${esc(event.title)}</strong> is <strong>almost fully staffed</strong>!</p>
        <p>Only <strong>${spotsRemaining} volunteer spot${spotsRemaining === 1 ? '' : 's'}</strong> remaining.</p>
        <p><a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
     );
@@ -337,9 +343,9 @@ async function checkAndSendMilestones(eventId) {
   // Check 100% milestone
   if (fillPercentage >= 100 && !sent.includes('100')) {
     await sendEmail(event.organizer_email,
-      `🎊 ${event.title} is fully staffed!`,
+      `🎊 ${esc(event.title)} is fully staffed!`,
       `<h2>🎊 You did it!</h2>
-       <p>Your event <strong>${event.title}</strong> is now <strong>100% fully staffed</strong>!</p>
+       <p>Your event <strong>${esc(event.title)}</strong> is now <strong>100% fully staffed</strong>!</p>
        <p>All ${totalNeeded} volunteer spots are filled. Time to celebrate! 🎉</p>
        <p><a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
     );
@@ -495,7 +501,7 @@ app.post('/create', async (req, res) => {
 
     const dashUrl = `${BASE_URL}/organizer/${organizerToken}`;
     const eventUrl = `${BASE_URL}/event/${eventId}`;
-    await sendEmail(organizer_email || NOTIFY_EMAIL, `Your GetRallied registry is live: ${title}`,
+    await sendEmail(organizer_email || NOTIFY_EMAIL, `Your GetRallied registry is live: ${esc(title)}`,
       `<h2>Your event registry is live!</h2>
        <p>${isPrivate ? '🔒 <strong>Private event</strong> — only people with the link can see it.' : '🌐 Public event'}</p>
        <p><a href="${eventUrl}">Share this link with your people →</a></p>
@@ -573,11 +579,11 @@ app.post('/claim/:taskId', async (req, res) => {
       const approveUrl = `${BASE_URL}/organizer/${event.organizer_token}/approve-claim/${claimId}`;
       const denyUrl = `${BASE_URL}/organizer/${event.organizer_token}/deny-claim/${claimId}`;
       await sendEmail(event.organizer_email || NOTIFY_EMAIL,
-        `⏳ Approval needed: ${name} wants "${task.title}"`,
+        `⏳ Approval needed: ${esc(name)} wants "${esc(task.title)}"`,
         `<h3>Someone wants to claim a role that needs your approval.</h3>
-         <p><strong>${name}</strong> wants to claim <strong>${task.title}</strong> for <em>${event.title}</em>.</p>
-         ${email ? `<p>📧 ${email}${phone ? ' &nbsp;·&nbsp; 📞 ' + phone : ''}</p>` : ''}
-         ${note ? `<p>📝 "${note}"</p>` : ''}
+         <p><strong>${esc(name)}</strong> wants to claim <strong>${esc(task.title)}</strong> for <em>${esc(event.title)}</em>.</p>
+         ${email ? `<p>📧 ${esc(email)}${phone ? ' &nbsp;·&nbsp; 📞 ' + phone : ''}</p>` : ''}
+         ${note ? `<p>📝 "${esc(note)}"</p>` : ''}
          <p style="margin-top:20px">
            <a href="${approveUrl}" style="background:#C8621A;color:#fff;padding:10px 20px;text-decoration:none;font-weight:bold;margin-right:12px">✅ Approve</a>
            <a href="${denyUrl}" style="background:#666;color:#fff;padding:10px 20px;text-decoration:none;font-weight:bold">✗ Decline</a>
@@ -586,9 +592,9 @@ app.post('/claim/:taskId', async (req, res) => {
       );
     } else {
       await sendEmail(event.organizer_email || NOTIFY_EMAIL,
-        `🙋 ${name} claimed "${task.title}"`,
-        `<p><strong>${name}</strong> claimed <strong>${task.title}</strong> for <em>${event.title}</em>.</p>
-         ${email ? `<p>Contact: ${email}${phone ? ' / ' + phone : ''}</p>` : ''}
+        `🙋 ${esc(name)} claimed "${esc(task.title)}"`,
+        `<p><strong>${esc(name)}</strong> claimed <strong>${esc(task.title)}</strong> for <em>${esc(event.title)}</em>.</p>
+         ${email ? `<p>Contact: ${esc(email)}${phone ? ' / ' + phone : ''}</p>` : ''}
          <p><a href="${BASE_URL}/organizer/${event.organizer_token}">View dashboard →</a></p>`
       );
     }
@@ -599,11 +605,11 @@ app.post('/claim/:taskId', async (req, res) => {
       const locStr = [event.location_name || event.location, event.location_address].filter(Boolean).join(', ').replace(/\n/g, ' ');
       if (needsApproval) {
         await sendEmail(email,
-          `Your request for "${task.title}" is pending`,
+          `Your request for "${esc(task.title)}" is pending`,
           `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
             <img src="${BASE_URL}/logo.png" alt="GetRallied" style="height:40px;margin-bottom:24px;display:block">
             <h2 style="font-size:20px;font-weight:800;color:#111;margin-bottom:8px">You're in the queue.</h2>
-            <p style="color:#555;line-height:1.6;margin-bottom:20px">Your request to claim <strong>${task.title}</strong> for <strong>${event.title}</strong> has been sent to the organizer. They'll confirm your spot shortly.</p>
+            <p style="color:#555;line-height:1.6;margin-bottom:20px">Your request to claim <strong>${esc(task.title)}</strong> for <strong>${esc(event.title)}</strong> has been sent to the organizer. They'll confirm your spot shortly.</p>
             ${dateStr ? `<p style="color:#888;font-size:13px;margin-bottom:4px">📅 ${dateStr}</p>` : ''}
             ${locStr ? `<p style="color:#888;font-size:13px;margin-bottom:20px">📍 ${locStr}</p>` : ''}
             <a href="${eventUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 20px;font-weight:700;font-size:14px;text-decoration:none">View event →</a>
@@ -612,12 +618,12 @@ app.post('/claim/:taskId', async (req, res) => {
         );
       } else {
         await sendEmail(email,
-          `You're confirmed for "${task.title}" — ${event.title}`,
+          `You're confirmed for "${esc(task.title)}" — ${esc(event.title)}`,
           `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
             <img src="${BASE_URL}/logo.png" alt="GetRallied" style="height:40px;margin-bottom:24px;display:block">
             <h2 style="font-size:20px;font-weight:800;color:#111;margin-bottom:8px">You're in. 🙌</h2>
-            <p style="color:#555;line-height:1.6;margin-bottom:6px">You've claimed <strong>${task.title}</strong> for:</p>
-            <p style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px">${event.title}</p>
+            <p style="color:#555;line-height:1.6;margin-bottom:6px">You've claimed <strong>${esc(task.title)}</strong> for:</p>
+            <p style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px">${esc(event.title)}</p>
             ${dateStr ? `<p style="color:#555;font-size:14px;margin-bottom:4px">📅 ${dateStr}</p>` : ''}
             ${locStr ? `<p style="color:#555;font-size:14px;margin-bottom:20px">📍 ${locStr}</p>` : ''}
             <a href="${eventUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 20px;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:28px">View full event →</a>
@@ -646,7 +652,7 @@ app.get('/organizer/:token/approve-claim/:claimId', (req, res) => {
     .btn{display:inline-block;padding:12px 28px;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;text-decoration:none;margin:4px}
     .approve{background:#111;color:#fff}.deny{background:#fff;color:#777;border:1.5px solid #e5e2dc}</style></head>
     <body><div class="card"><h2>Approve this claim?</h2>
-    <p><strong>${claim.name}</strong> wants to claim <strong>${task ? task.title : 'a task'}</strong></p>
+    <p><strong>${esc(claim.name)}</strong> wants to claim <strong>${task ? esc(task.title) : 'a task'}</strong></p>
     <form method="POST" action="/organizer/${req.params.token}/approve-claim/${claim.id}" style="display:inline">
       <input type="hidden" name="_csrf" value="${res.locals.csrfToken}">
       <button type="submit" class="btn approve">✅ Approve</button>
@@ -776,7 +782,7 @@ app.post('/notify', async (req, res) => {
     );
     // Notify Jason
     await sendEmail(NOTIFY_EMAIL, '🎉 New GetRallied waitlist signup: ' + email,
-      `<p><strong>${email}</strong> just joined the GetRallied waitlist.</p>`
+      `<p><strong>${esc(email)}</strong> just joined the GetRallied waitlist.</p>`
     );
   } catch(e) { console.error('Notify error:', e.message); }
   res.redirect('/?subscribed=1');
@@ -936,11 +942,11 @@ app.post('/organizer/:token/email-volunteers', async (req, res) => {
         subject,
         `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
           <img src="${BASE_URL}/logo.png" alt="GetRallied" style="height:36px;margin-bottom:24px;display:block">
-          <h2 style="font-size:18px;font-weight:800;color:#111;margin-bottom:4px">${event.title}</h2>
+          <h2 style="font-size:18px;font-weight:800;color:#111;margin-bottom:4px">${esc(event.title)}</h2>
           ${dateStr ? '<p style="color:#888;font-size:13px;margin-bottom:16px">📅 ' + dateStr + (locStr ? ' · 📍 ' + locStr : '') + '</p>' : ''}
           <div style="color:#333;font-size:15px;line-height:1.6;margin-bottom:24px;white-space:pre-wrap">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
           <a href="${eventUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 20px;font-weight:700;font-size:14px;text-decoration:none">View event →</a>
-          <p style="color:#bbb;font-size:11px;margin-top:28px">You're receiving this because you signed up for ${event.title} on GetRallied.</p>
+          <p style="color:#bbb;font-size:11px;margin-top:28px">You're receiving this because you signed up for ${esc(event.title)} on GetRallied.</p>
         </div>`
       );
       sent++;

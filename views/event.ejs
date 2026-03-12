@@ -230,7 +230,7 @@ input:focus{border-color:#111111}
         <% if (task.description) { %><div class="task-desc"><%= task.description %></div><% } %>
         <% if (taskClaims.length > 0) { %>
         <div class="claimants" style="margin-top:8px">
-          <% taskClaims.forEach(c => { %><span class="claimant-pill">👤 <%= c.name %></span><% }); %>
+          <% taskClaims.forEach(c => { %><span class="claimant-pill">👤 <%= c.name.split(' ')[0] %></span><% }); %>
         </div>
         <% } %>
       </div>
