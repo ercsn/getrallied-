@@ -89,9 +89,20 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+// Password reset tokens table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
 try { db.exec('ALTER TABLE events ADD COLUMN account_id TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN profile_pic TEXT'); } catch(e) {}
 try { db.exec("ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'active'"); } catch(e) {}
+try { db.exec('ALTER TABLE events ADD COLUMN milestones_sent TEXT'); } catch(e) {}
 
 function genId(len = 10) {
   return crypto.randomBytes(Math.ceil(len * 0.75)).toString('hex').slice(0, len);
@@ -264,6 +275,65 @@ async function sendEmail(to, subject, html) {
       htmlContent: html
     })
   });
+}
+
+// ── Milestone Notifications ───────────────────────────────────────────────────
+async function checkAndSendMilestones(eventId) {
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+  if (!event || !event.organizer_email) return;
+
+  // Only count tasks where qty_needed > 0
+  const tasks = db.prepare('SELECT * FROM tasks WHERE event_id = ? AND quantity_needed > 0').all(eventId);
+  if (tasks.length === 0) return;
+
+  const totalNeeded = tasks.reduce((sum, t) => sum + t.quantity_needed, 0);
+  const totalClaimed = tasks.reduce((sum, t) => sum + t.quantity_claimed, 0);
+  const fillPercentage = totalNeeded > 0 ? (totalClaimed / totalNeeded) * 100 : 0;
+  const spotsRemaining = totalNeeded - totalClaimed;
+
+  const sent = event.milestones_sent ? event.milestones_sent.split(',') : [];
+  const dashboardUrl = `${BASE_URL}/organizer/${event.organizer_token}`;
+
+  // Check 50% milestone
+  if (fillPercentage >= 50 && !sent.includes('50')) {
+    await sendEmail(event.organizer_email,
+      `🎉 ${event.title} is halfway there!`,
+      `<h2>🎉 Congratulations!</h2>
+       <p>Your event <strong>${event.title}</strong> just hit the <strong>50% mark</strong>!</p>
+       <p>${totalClaimed} out of ${totalNeeded} volunteer spots are now filled.</p>
+       <p>Keep the momentum going! <a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
+    );
+    sent.push('50');
+  }
+
+  // Check "almost full" milestone (3 or fewer spots remaining)
+  if (spotsRemaining > 0 && spotsRemaining <= 3 && !sent.includes('almost')) {
+    await sendEmail(event.organizer_email,
+      `🔥 ${event.title} is almost fully staffed!`,
+      `<h2>🔥 Almost there!</h2>
+       <p>Your event <strong>${event.title}</strong> is <strong>almost fully staffed</strong>!</p>
+       <p>Only <strong>${spotsRemaining} volunteer spot${spotsRemaining === 1 ? '' : 's'}</strong> remaining.</p>
+       <p><a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
+    );
+    sent.push('almost');
+  }
+
+  // Check 100% milestone
+  if (fillPercentage >= 100 && !sent.includes('100')) {
+    await sendEmail(event.organizer_email,
+      `🎊 ${event.title} is fully staffed!`,
+      `<h2>🎊 You did it!</h2>
+       <p>Your event <strong>${event.title}</strong> is now <strong>100% fully staffed</strong>!</p>
+       <p>All ${totalNeeded} volunteer spots are filled. Time to celebrate! 🎉</p>
+       <p><a href="${dashboardUrl}" style="color:#111;font-weight:bold">View your dashboard →</a></p>`
+    );
+    sent.push('100');
+  }
+
+  // Update milestones_sent if anything was sent
+  if (sent.length > (event.milestones_sent ? event.milestones_sent.split(',').length : 0)) {
+    db.prepare('UPDATE events SET milestones_sent = ? WHERE id = ?').run(sent.join(','), eventId);
+  }
 }
 
 // ── SEO Routes ──────────────────────────────────────────────────────────────
@@ -474,7 +544,10 @@ app.post('/claim/:taskId', async (req, res) => {
   db.prepare(`INSERT INTO claims (id,task_id,event_id,name,email,phone,note,status) VALUES (?,?,?,?,?,?,?,?)`)
     .run(claimId, task.id, task.event_id, name.trim(), email || '', phone || '', note || '', status);
 
-  if (!needsApproval) recalcClaimed(task.id);
+  if (!needsApproval) {
+    recalcClaimed(task.id);
+    await checkAndSendMilestones(task.event_id);
+  }
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(task.event_id);
   if (event) {
@@ -565,13 +638,14 @@ app.get('/organizer/:token/approve-claim/:claimId', (req, res) => {
       <button type="submit" class="btn deny">✗ Decline</button>
     </form></div></body></html>`);
 });
-app.post('/organizer/:token/approve-claim/:claimId', (req, res) => {
+app.post('/organizer/:token/approve-claim/:claimId', async (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
   if (!event) return res.status(404).send('Not found');
   const claim = db.prepare('SELECT * FROM claims WHERE id = ? AND event_id = ?').get(req.params.claimId, event.id);
   if (!claim) return res.status(404).send('Claim not found');
   db.prepare('UPDATE claims SET status = ? WHERE id = ?').run('approved', claim.id);
   recalcClaimed(claim.task_id);
+  await checkAndSendMilestones(event.id);
   res.redirect(`/organizer/${req.params.token}?approved=${claim.id}`);
 });
 
@@ -761,6 +835,53 @@ app.post('/organizer/:token/update-info', (req, res) => {
   db.prepare('UPDATE events SET title = ?, vision = ?, description = ? WHERE id = ?')
     .run(title.trim(), (vision || '').trim(), (description || '').trim(), event.id);
   res.redirect(`/organizer/${req.params.token}?saved=1`);
+});
+
+// Duplicate event (copies event + tasks, resets claims)
+app.post('/organizer/:token/duplicate', (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
+  if (!event) return res.status(404).send('Not found');
+
+  const newEventId = genId();
+  const newOrganizerToken = genSecureToken();
+
+  // Copy event (title, description, vision, location, organizer info, account_id)
+  // Do NOT copy: date, is_private (defaults to 0), milestones_sent, status
+  db.prepare(`INSERT INTO events 
+    (id, organizer_token, title, description, vision, location, organizer_name, organizer_email, account_id, is_private)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `).run(
+    newEventId,
+    newOrganizerToken,
+    event.title,
+    event.description,
+    event.vision,
+    event.location,
+    event.organizer_name,
+    event.organizer_email,
+    event.account_id
+  );
+
+  // Copy all tasks from original event, reset quantity_claimed to 0
+  const tasks = db.prepare('SELECT * FROM tasks WHERE event_id = ?').all(event.id);
+  tasks.forEach(task => {
+    db.prepare(`INSERT INTO tasks
+      (id, event_id, title, description, category, quantity_needed, quantity_claimed, requires_approval, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+    `).run(
+      genId(),
+      newEventId,
+      task.title,
+      task.description,
+      task.category,
+      task.quantity_needed,
+      task.requires_approval,
+      task.sort_order
+    );
+  });
+
+  // Redirect to the new event's organizer page
+  res.redirect(`/organizer/${newOrganizerToken}`);
 });
 
 // Email all volunteers
@@ -995,6 +1116,99 @@ app.post('/signin', (req, res) => {
 });
 
 app.get('/signout', (req, res) => { res.clearCookie('gr_auth'); res.redirect('/'); });
+
+// ── Password Reset ────────────────────────────────────────────────────────────
+
+// Rate limiter: 5 requests per hour per IP
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: 'Too many password reset requests. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', { sent: req.query.sent, error: req.query.error });
+});
+
+app.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.trim()) return res.redirect('/forgot-password?error=Email is required');
+
+  const account = db.prepare('SELECT * FROM accounts WHERE LOWER(email) = LOWER(?)').get(email.trim());
+  
+  // Always show success message (prevent email enumeration)
+  if (!account) {
+    return res.redirect('/forgot-password?sent=1');
+  }
+
+  // Generate reset token (1 hour expiry)
+  const resetToken = genSecureToken(32);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour from now
+
+  db.prepare('INSERT INTO password_reset_tokens (token, email, expires_at) VALUES (?, ?, ?)')
+    .run(resetToken, account.email, expiresAt);
+
+  // Send reset email
+  const resetUrl = `${BASE_URL}/reset-password?token=${resetToken}`;
+  await sendEmail(account.email,
+    'Reset your GetRallied password',
+    `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+      <img src="${BASE_URL}/logo.png" alt="GetRallied" style="height:40px;margin-bottom:24px;display:block">
+      <h2 style="font-size:20px;font-weight:800;color:#111;margin-bottom:12px">Reset your password</h2>
+      <p style="color:#555;line-height:1.6;margin-bottom:20px">You requested a password reset for your GetRallied account.</p>
+      <p style="margin-bottom:24px">
+        <a href="${resetUrl}" style="display:inline-block;background:#111;color:#fff;padding:12px 24px;font-weight:700;font-size:14px;text-decoration:none;border-radius:4px">Reset password →</a>
+      </p>
+      <p style="color:#999;font-size:13px;line-height:1.6">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+      <p style="color:#bbb;font-size:12px;margin-top:20px">Or copy this link: ${resetUrl}</p>
+    </div>`
+  );
+
+  res.redirect('/forgot-password?sent=1');
+});
+
+app.get('/reset-password', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/signin?error=Invalid reset link');
+
+  const resetToken = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0').get(token);
+  if (!resetToken) return res.redirect('/signin?error=Invalid or expired reset link');
+
+  // Check if token is expired
+  if (new Date(resetToken.expires_at) < new Date()) {
+    return res.redirect('/signin?error=Reset link has expired');
+  }
+
+  res.render('reset-password', { token, error: req.query.error });
+});
+
+app.post('/reset-password', async (req, res) => {
+  const { token, password, password_confirm } = req.body;
+  if (!token || !password) return res.redirect(`/reset-password?token=${token}&error=All fields required`);
+  if (password !== password_confirm) return res.redirect(`/reset-password?token=${token}&error=Passwords do not match`);
+  if (password.length < 8) return res.redirect(`/reset-password?token=${token}&error=Password must be at least 8 characters`);
+
+  const resetToken = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0').get(token);
+  if (!resetToken || new Date(resetToken.expires_at) < new Date()) {
+    return res.redirect('/signin?error=Invalid or expired reset link');
+  }
+
+  const account = db.prepare('SELECT * FROM accounts WHERE LOWER(email) = LOWER(?)').get(resetToken.email);
+  if (!account) return res.redirect('/signin?error=Account not found');
+
+  // Update password
+  const passwordHash = bcrypt.hashSync(password, 10);
+  db.prepare('UPDATE accounts SET password_hash = ? WHERE id = ?').run(passwordHash, account.id);
+
+  // Mark token as used
+  db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE token = ?').run(token);
+
+  // Auto sign in
+  setAuthCookie(res, account);
+  res.redirect('/dashboard?reset=1');
+});
 
 app.get('/dashboard', requireAuth, (req, res) => {
   const events = db.prepare('SELECT * FROM events WHERE account_id = ? OR LOWER(organizer_email) = LOWER(?) ORDER BY created_at DESC').all(req.account.id, req.account.email);

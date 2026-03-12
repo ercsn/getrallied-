@@ -211,6 +211,10 @@ input:focus,select:focus{border-color:#111111}
         <button type="submit" style="padding:6px 14px;border:1.5px solid #fecaca;background:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);color:#b91c1c">✗ Cancel Event</button>
       </form>
     <% } %>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/duplicate" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <button type="submit" style="padding:6px 14px;border:1.5px solid #e5e2dc;background:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);color:#111" title="Create a copy of this event with all tasks">⟲ Run this again</button>
+    </form>
   </div>
 
   <%# Edit event info %>

@@ -1,14 +1,67 @@
-<nav style="border-bottom:1px solid #e5e2dc;padding:16px 32px;display:flex;align-items:center;gap:20px;font-family:'Inter',sans-serif">
-  <a href="/"><img src="/logo.png" alt="GetRallied" style="height:56px;display:block"></a>
-  <div style="flex:1"></div>
-  <a href="/my-claims" style="color:<%= typeof _navActive !== 'undefined' && _navActive === 'my-claims' ? '#111' : '#777' %>;text-decoration:none;font-size:14px;font-weight:600">My Claims</a>
-  <a href="/explore" style="color:<%= typeof _navActive !== 'undefined' && _navActive === 'explore' ? '#111' : '#777' %>;text-decoration:none;font-size:14px;font-weight:600">Explore</a>
-  <% if (typeof account !== 'undefined' && account) { %>
-    <a href="/dashboard" style="color:<%= typeof _navActive !== 'undefined' && _navActive === 'dashboard' ? '#111' : '#777' %>;text-decoration:none;font-size:14px;font-weight:600">Dashboard</a>
-    <a href="/account" style="color:<%= typeof _navActive !== 'undefined' && _navActive === 'account' ? '#111' : '#777' %>;text-decoration:none;font-size:14px;font-weight:600"><%= account.name || 'Account' %></a>
-    <a href="/signout" style="color:#777;text-decoration:none;font-size:14px;font-weight:600">Sign out</a>
-  <% } else { %>
-    <a href="/signin" style="color:#777;text-decoration:none;font-size:14px;font-weight:600">Sign in</a>
-    <a href="/signup" style="background:#111;color:#fff;padding:7px 14px;font-size:13px;font-weight:700;text-decoration:none">Sign up</a>
-  <% } %>
+<style>
+  nav { border-bottom: 1px solid #e5e2dc; padding: 16px 32px; display: flex; align-items: center; gap: 20px; font-family: 'Inter', sans-serif; position: relative; }
+  nav .logo { height: 56px; display: block; }
+  nav .spacer { flex: 1; }
+  nav a.nav-link { color: #777; text-decoration: none; font-size: 14px; font-weight: 600; }
+  nav a.nav-link.active { color: #111; }
+  nav .btn-signup { background: #111; color: #fff; padding: 7px 14px; font-size: 13px; font-weight: 700; text-decoration: none; }
+  nav .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+  nav .hamburger span { display: block; width: 24px; height: 2px; background: #111; margin: 5px 0; }
+  nav .nav-links { display: flex; align-items: center; gap: 20px; }
+  
+  @media (max-width: 768px) {
+    nav { padding: 12px 20px; }
+    nav .logo { height: 42px; }
+    nav .hamburger { display: block; }
+    nav .nav-links { 
+      display: none; 
+      position: absolute; 
+      top: 100%; 
+      left: 0; 
+      right: 0; 
+      background: #fff; 
+      border-top: 1px solid #e5e2dc;
+      flex-direction: column; 
+      align-items: stretch; 
+      gap: 0;
+      padding: 0;
+    }
+    nav .nav-links.show { display: flex; }
+    nav .nav-links a { 
+      padding: 16px 20px; 
+      border-bottom: 1px solid #f5f5f5; 
+      color: #111 !important;
+    }
+    nav .nav-links a.btn-signup {
+      background: #111;
+      color: #fff !important;
+      margin: 12px 20px;
+      text-align: center;
+      border-radius: 4px;
+    }
+  }
+</style>
+
+<nav>
+  <a href="/"><img src="/logo.png" alt="GetRallied" class="logo"></a>
+  <div class="spacer"></div>
+  
+  <button class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  
+  <div class="nav-links">
+    <a href="/my-claims" class="nav-link <%= typeof _navActive !== 'undefined' && _navActive === 'my-claims' ? 'active' : '' %>">My Claims</a>
+    <a href="/explore" class="nav-link <%= typeof _navActive !== 'undefined' && _navActive === 'explore' ? 'active' : '' %>">Explore</a>
+    <% if (typeof account !== 'undefined' && account) { %>
+      <a href="/dashboard" class="nav-link <%= typeof _navActive !== 'undefined' && _navActive === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+      <a href="/account" class="nav-link <%= typeof _navActive !== 'undefined' && _navActive === 'account' ? 'active' : '' %>"><%= account.name || 'Account' %></a>
+      <a href="/signout" class="nav-link">Sign out</a>
+    <% } else { %>
+      <a href="/signin" class="nav-link">Sign in</a>
+      <a href="/signup" class="btn-signup">Sign up</a>
+    <% } %>
+  </div>
 </nav>
