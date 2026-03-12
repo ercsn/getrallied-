@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 const fetch = require('node-fetch');
 const multer = require('multer');
 const upload = multer({
-  dest: './public/uploads/',
+  dest: '/opt/ourtask/public/uploads/',
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (['image/jpeg','image/png','image/gif','image/webp'].includes(file.mimetype)) cb(null, true);
@@ -14,20 +14,19 @@ const upload = multer({
   }
 });
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = process.env.PORT || 19100;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || 'https://getrallied.com';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'jason@ercsn.com';
 const BREVO_KEY = process.env.BREVO_KEY;
-const ADMIN_PASS = process.env.ADMIN_PASS;
+const ADMIN_PASS = process.env.ADMIN_PASS || 'getrallied2026';
 
 // DB
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'getrallied.db');
-const fs_extra = require('fs');
-if (!fs_extra.existsSync(path.dirname(dbPath))) fs_extra.mkdirSync(path.dirname(dbPath), { recursive: true });
-const db = new Database(dbPath);
+const db = new Database('/opt/ourtask/ourtask.db');
 db.exec(`
   CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
@@ -76,6 +75,18 @@ db.exec(`
   );
 `);
 
+// Accounts table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+try { db.exec('ALTER TABLE events ADD COLUMN account_id TEXT'); } catch(e) {}
+
 function genId(len = 10) {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = '';
@@ -105,6 +116,30 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(cookieParser());
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+function getAccount(req) {
+  try {
+    const cookie = req.cookies?.gr_auth;
+    if (!cookie) return null;
+    const { id } = JSON.parse(Buffer.from(cookie, 'base64').toString());
+    return db.prepare('SELECT * FROM accounts WHERE id = ?').get(id) || null;
+  } catch(e) { return null; }
+}
+
+function setAuthCookie(res, account) {
+  const payload = Buffer.from(JSON.stringify({ id: account.id, email: account.email })).toString('base64');
+  res.cookie('gr_auth', payload, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+}
+
+function requireAuth(req, res, next) {
+  const account = getAccount(req);
+  if (!account) return res.redirect('/signin?next=' + encodeURIComponent(req.originalUrl));
+  req.account = account;
+  next();
+}
 
 // ── Claude breakdown ──────────────────────────────────────────────────────────
 async function breakdownVision(vision, eventTitle, eventDate, eventLocation) {
@@ -162,7 +197,7 @@ async function sendEmail(to, subject, html) {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
-app.get('/', (req, res) => res.render('home'));
+app.get('/', (req, res) => res.render('home', { account: getAccount(req) }));
 
 // Create event
 app.post('/create', async (req, res) => {
@@ -174,8 +209,9 @@ app.post('/create', async (req, res) => {
     const organizerToken = genId(16);
     const isPrivate = is_private === '1' ? 1 : 0;
 
-    db.prepare(`INSERT INTO events (id,organizer_token,title,description,vision,date,location,organizer_name,organizer_email,is_private) VALUES (?,?,?,?,?,?,?,?,?,?)`)
-      .run(eventId, organizerToken, title.trim(), '', vision.trim(), date || '', location || '', organizer_name || '', organizer_email || NOTIFY_EMAIL, isPrivate);
+    const account = getAccount(req);
+    db.prepare(`INSERT INTO events (id,organizer_token,title,description,vision,date,location,organizer_name,organizer_email,is_private,account_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, organizerToken, title.trim(), '', vision.trim(), date || '', location || '', organizer_name || '', organizer_email || NOTIFY_EMAIL, isPrivate, account ? account.id : null);
 
     (breakdown.tasks || []).forEach((t, i) => {
       db.prepare(`INSERT INTO tasks (id,event_id,title,description,category,quantity_needed,requires_approval,sort_order) VALUES (?,?,?,?,?,?,?,?)`)
@@ -435,14 +471,14 @@ app.post('/organizer/:token/upload-images',
       const f = req.files.org_logo[0];
       const ext = f.mimetype.split('/')[1].replace('jpeg','jpg');
       const newName = `logo_${event.id}_${Date.now()}.${ext}`;
-      require('fs').renameSync(f.path, `./public/uploads/${newName}`);
+      require('fs').renameSync(f.path, `/opt/ourtask/public/uploads/${newName}`);
       updates.org_logo = `/uploads/${newName}`;
     }
     if (req.files?.banner_image?.[0]) {
       const f = req.files.banner_image[0];
       const ext = f.mimetype.split('/')[1].replace('jpeg','jpg');
       const newName = `banner_${event.id}_${Date.now()}.${ext}`;
-      require('fs').renameSync(f.path, `./public/uploads/${newName}`);
+      require('fs').renameSync(f.path, `/opt/ourtask/public/uploads/${newName}`);
       updates.banner_image = `/uploads/${newName}`;
     }
 
@@ -614,14 +650,95 @@ app.get('/auth/:token', (req, res) => {
   res.render('event-picker', { events, baseUrl: BASE_URL });
 });
 
+
+// ── Signup / Signin / Dashboard / Explore ─────────────────────────────────────
+
+app.get('/signup', (req, res) => {
+  const account = getAccount(req);
+  if (account) return res.redirect('/dashboard');
+  res.render('signup', { error: req.query.error || null });
+});
+
+app.post('/signup', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!email || !password || password.length < 6) return res.redirect('/signup?error=Password must be at least 6 characters');
+  const existing = db.prepare('SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)').get(email.trim());
+  if (existing) return res.redirect('/signup?error=An account with that email already exists');
+  const id = genId(12);
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare('INSERT INTO accounts (id, email, password_hash, name) VALUES (?,?,?,?)').run(id, email.toLowerCase().trim(), hash, (name || '').trim());
+  // Link any existing events by this email to the new account
+  db.prepare('UPDATE events SET account_id = ? WHERE LOWER(organizer_email) = LOWER(?) AND account_id IS NULL').run(id, email.trim());
+  const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
+  setAuthCookie(res, account);
+  res.redirect('/dashboard');
+});
+
+app.get('/signin', (req, res) => {
+  const account = getAccount(req);
+  if (account) return res.redirect('/dashboard');
+  res.render('signin', { error: req.query.error || null, next: req.query.next || '' });
+});
+
+app.post('/signin', (req, res) => {
+  const { email, password } = req.body;
+  const next = req.body.next || '/dashboard';
+  if (!email || !password) return res.redirect('/signin?error=Email and password required');
+  const account = db.prepare('SELECT * FROM accounts WHERE LOWER(email) = LOWER(?)').get(email.trim());
+  if (!account || !bcrypt.compareSync(password, account.password_hash)) return res.redirect('/signin?error=Invalid email or password');
+  setAuthCookie(res, account);
+  res.redirect(next);
+});
+
+app.get('/signout', (req, res) => { res.clearCookie('gr_auth'); res.redirect('/'); });
+
+app.get('/dashboard', requireAuth, (req, res) => {
+  const events = db.prepare('SELECT * FROM events WHERE account_id = ? OR LOWER(organizer_email) = LOWER(?) ORDER BY created_at DESC').all(req.account.id, req.account.email);
+  // Stats for each event
+  const eventData = events.map(e => {
+    const tasks = db.prepare('SELECT * FROM tasks WHERE event_id = ?').all(e.id);
+    const claimCount = db.prepare("SELECT COUNT(*) as c FROM claims WHERE event_id = ? AND status != 'denied'").get(e.id).c;
+    const pendingCount = db.prepare("SELECT COUNT(*) as c FROM claims WHERE event_id = ? AND status = 'pending'").get(e.id).c;
+    const totalNeeded = tasks.reduce((s, t) => s + t.quantity_needed, 0);
+    const totalClaimed = tasks.reduce((s, t) => s + t.quantity_claimed, 0);
+    return { ...e, taskCount: tasks.length, claimCount, pendingCount, totalNeeded, totalClaimed };
+  });
+  res.render('dashboard', { account: req.account, events: eventData });
+});
+
+app.get('/explore', (req, res) => {
+  const q = req.query.q || '';
+  const sort = req.query.sort || 'newest';
+  let query = "SELECT * FROM events WHERE is_private = 0";
+  const params = [];
+  if (q) {
+    query += " AND (LOWER(title) LIKE ? OR LOWER(location) LIKE ? OR LOWER(vision) LIKE ?)";
+    const like = '%' + q.toLowerCase() + '%';
+    params.push(like, like, like);
+  }
+  switch(sort) {
+    case 'soonest': query += " ORDER BY date ASC"; break;
+    case 'popular': query += " ORDER BY (SELECT COUNT(*) FROM claims WHERE claims.event_id = events.id AND status != 'denied') DESC"; break;
+    default: query += " ORDER BY created_at DESC";
+  }
+  const events = db.prepare(query).all(...params);
+  const eventData = events.map(e => {
+    const tasks = db.prepare('SELECT * FROM tasks WHERE event_id = ?').all(e.id);
+    const claimCount = db.prepare("SELECT COUNT(*) as c FROM claims WHERE event_id = ? AND status != 'denied'").get(e.id).c;
+    const totalNeeded = tasks.reduce((s, t) => s + t.quantity_needed, 0);
+    const totalClaimed = tasks.reduce((s, t) => s + t.quantity_claimed, 0);
+    return { ...e, taskCount: tasks.length, claimCount, totalNeeded, totalClaimed };
+  });
+  const account = getAccount(req);
+  res.render('explore', { events: eventData, q, sort, account });
+});
+
 function adminAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Basic ')) return res.set('WWW-Authenticate','Basic realm="GetRallied Admin"').status(401).send('Unauthorized');
   const decoded = Buffer.from(auth.slice(6), 'base64').toString();
   const colon = decoded.indexOf(':');
-  if (!ADMIN_PASS) return res.status(503).send('Admin not configured');
-  const adminUser = process.env.ADMIN_USER || 'admin';
-  if (decoded.slice(0, colon) === adminUser && decoded.slice(colon+1) === ADMIN_PASS) return next();
+  if (decoded.slice(0, colon) === 'jason' && decoded.slice(colon+1) === ADMIN_PASS) return next();
   return res.set('WWW-Authenticate','Basic realm="GetRallied Admin"').status(401).send('Unauthorized');
 }
 

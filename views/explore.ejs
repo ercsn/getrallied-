@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Explore Events — GetRallied</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#111;color:#fff;min-height:100vh}
+    nav{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid #222}
+    nav img{height:32px}
+    nav .spacer{flex:1}
+    nav a{color:#888;text-decoration:none;font-size:14px;margin-left:20px;font-weight:600}
+    nav a:hover{color:#fff}
+    nav .active{color:#C8621A}
+    .container{max-width:900px;margin:0 auto;padding:32px 24px}
+    h1{font-size:28px;font-weight:800;margin-bottom:8px}
+    .sub{color:#888;font-size:15px;margin-bottom:24px}
+    .filters{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;align-items:center}
+    .search{flex:1;min-width:200px;padding:10px 14px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:14px;font-family:inherit}
+    .search:focus{outline:none;border-color:#C8621A}
+    .sort-btn{padding:8px 16px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#aaa;font-size:13px;font-family:inherit;cursor:pointer;text-decoration:none;font-weight:600}
+    .sort-btn.active{background:#C8621A;color:#fff;border-color:#C8621A}
+    .sort-btn:hover{border-color:#C8621A;color:#fff}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .event-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;transition:border-color .2s}
+    .event-card:hover{border-color:#C8621A}
+    .event-card a{text-decoration:none;color:inherit;display:block}
+    .card-banner{width:100%;height:140px;object-fit:cover;background:#222}
+    .card-body{padding:16px}
+    .card-title{font-size:16px;font-weight:800;margin-bottom:6px}
+    .card-meta{font-size:12px;color:#888;margin-bottom:10px}
+    .card-desc{font-size:13px;color:#999;line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .card-stats{display:flex;gap:16px;font-size:12px;color:#aaa}
+    .progress-bar{width:100%;height:4px;background:#2a2a2a;border-radius:2px;margin-top:10px;overflow:hidden}
+    .progress-fill{height:100%;background:#C8621A;border-radius:2px}
+    .empty{text-align:center;padding:60px 20px;color:#666}
+    .empty h2{font-size:20px;margin-bottom:8px;color:#888}
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/"><img src="/logo.png" alt="GetRallied"></a>
+    <div class="spacer"></div>
+    <a href="/explore" class="active">Explore</a>
+    <% if (account) { %>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/signout">Sign out</a>
+    <% } else { %>
+      <a href="/signin">Sign in</a>
+    <% } %>
+  </nav>
+  <div class="container">
+    <h1>Explore Events</h1>
+    <p class="sub">Find events near you and show up where it matters.</p>
+
+    <form class="filters" method="GET" action="/explore">
+      <input type="text" name="q" class="search" placeholder="Search events..." value="<%= q %>">
+      <input type="hidden" name="sort" value="<%= sort %>" id="sortVal">
+      <a href="/explore?q=<%= encodeURIComponent(q) %>&sort=newest" class="sort-btn <%= sort === 'newest' ? 'active' : '' %>">Newest</a>
+      <a href="/explore?q=<%= encodeURIComponent(q) %>&sort=soonest" class="sort-btn <%= sort === 'soonest' ? 'active' : '' %>">Soonest</a>
+      <a href="/explore?q=<%= encodeURIComponent(q) %>&sort=popular" class="sort-btn <%= sort === 'popular' ? 'active' : '' %>">Most Popular</a>
+    </form>
+
+    <% if (events.length === 0) { %>
+      <div class="empty">
+        <h2>No public events yet</h2>
+        <p><%= q ? 'Try a different search.' : 'Be the first to create one!' %></p>
+      </div>
+    <% } else { %>
+      <div class="grid">
+        <% events.forEach(e => { %>
+          <div class="event-card">
+            <a href="/event/<%= e.id %>">
+              <% if (e.banner_image) { %>
+                <img src="<%= e.banner_image %>" class="card-banner">
+              <% } else { %>
+                <div class="card-banner" style="display:flex;align-items:center;justify-content:center;font-size:40px">📣</div>
+              <% } %>
+              <div class="card-body">
+                <div class="card-title"><%= e.title %></div>
+                <div class="card-meta">
+                  📅 <%= e.date || 'Date TBD' %> · 📍 <%= e.location || 'Location TBD' %>
+                </div>
+                <% if (e.vision) { %>
+                  <div class="card-desc"><%= e.vision %></div>
+                <% } %>
+                <div class="card-stats">
+                  <span>📋 <%= e.taskCount %> tasks</span>
+                  <span>🙋 <%= e.claimCount %> people</span>
+                  <span><%= e.totalNeeded > 0 ? Math.round(e.totalClaimed / e.totalNeeded * 100) : 0 %>% filled</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width:<%= e.totalNeeded > 0 ? Math.min(100, Math.round(e.totalClaimed / e.totalNeeded * 100)) : 0 %>%"></div>
+                </div>
+              </div>
+            </a>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

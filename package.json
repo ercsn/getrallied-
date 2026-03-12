@@ -1,34 +1,21 @@
 {
-  "name": "getrallied",
+  "name": "ourtask",
   "version": "1.0.0",
-  "description": "AI-powered event coordination. Describe your vision, we break it into tasks. People commit and show up knowing their role.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [
-    "event",
-    "coordination",
-    "tasks",
-    "volunteer",
-    "ai",
-    "community",
-    "organizing"
-  ],
-  "author": "GetRallied",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/getrallied/getrallied"
-  },
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^9.4.3",
     "body-parser": "^1.20.2",
-    "dotenv": "^16.4.5",
-    "ejs": "^3.1.10",
-    "express": "^4.21.0",
-    "multer": "^1.4.5-lts.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.0.3",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "multer": "^2.1.1",
+    "nanoid": "^3.3.7",
     "node-fetch": "^2.7.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.3"
   }
 }
