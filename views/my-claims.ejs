@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <title>My Claims — GetRallied</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -28,6 +28,8 @@
     .empty{text-align:center;padding:48px 20px;color:#aaa}
     .empty h2{font-size:18px;color:#777;margin-bottom:8px;font-weight:700}
     .count{font-size:14px;color:#777;margin-bottom:20px}
+    .privacy-note{background:#f7f6f4;border:1px solid #e5e2dc;padding:12px 16px;font-size:13px;color:#777;margin-bottom:24px;border-radius:4px}
+    .privacy-note strong{color:#111}
   </style>
 </head>
 <body>
@@ -36,10 +38,12 @@
     <h1>My Claims</h1>
     <p class="sub">Everything you've signed up for across all events.</p>
 
+    <div class="privacy-note">🔒 <strong>Your claims are private.</strong> Only you can see this page when signed in.</div>
+
     <% if (claims.length === 0) { %>
       <div class="empty">
         <h2>No claims yet</h2>
-        <p>You haven't claimed any tasks yet. <a href="/explore" style="color:#111;font-weight:600">Browse events</a> to get involved.</p>
+        <p>You haven't claimed any tasks yet. <a href="/explore" style="color:#111;font-weight:600">Browse events</a> to find something to join.</p>
       </div>
     <% } else { %>
       <p class="count">📋 <%= claims.length %> claim<%= claims.length !== 1 ? 's' : '' %></p>
