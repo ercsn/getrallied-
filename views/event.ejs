@@ -185,6 +185,12 @@ input:focus{border-color:#111111}
       <div class="progress-label"><%= totalClaimed %> / <%= totalNeeded %></div>
       <div class="progress-sub">tasks claimed</div>
     </div>
+    <% if (typeof peopleCount !== 'undefined' && peopleCount > 0) { %>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:8px;justify-content:center">
+      <span style="font-size:28px;font-weight:800;color:#111"><%= peopleCount %></span>
+      <span style="font-size:14px;color:#777;font-weight:600"><%= peopleCount === 1 ? 'person' : 'people' %> showing up</span>
+    </div>
+    <% } %>
   </div>
 </div>
 

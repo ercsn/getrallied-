@@ -80,6 +80,21 @@ h1 span{display:block;color:var(--muted);font-weight:600;font-size:clamp(1rem,2.
 .cta-section{padding:80px 24px;text-align:center}
 .cta-section h2{font-size:clamp(1.4rem,3vw,2rem);font-weight:800;letter-spacing:-0.5px;margin-bottom:12px}
 .cta-section p{font-size:16px;color:var(--muted);margin-bottom:28px}
+.templates{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;max-width:600px;margin-left:auto;margin-right:auto}
+.tpl-btn{padding:8px 16px;border:1.5px solid var(--border);background:#fff;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--muted);transition:all .2s}
+.tpl-btn:hover{border-color:var(--text);color:var(--text)}
+.tpl-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.create-box{max-width:520px;margin:0 auto;text-align:left}
+.create-field{margin-bottom:14px}
+.create-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.create-field input,.create-field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);font-size:14px;font-family:var(--font);color:var(--text);border-radius:4px;background:#fff}
+.create-field input:focus,.create-field textarea:focus{outline:none;border-color:var(--text)}
+.create-field input::placeholder,.create-field textarea::placeholder{color:var(--faint)}
+.create-field textarea{resize:vertical}
+.create-row{display:flex;gap:12px}
+.btn-create-submit{width:100%;padding:14px;background:var(--text);color:#fff;border:none;font-size:15px;font-weight:700;font-family:var(--font);cursor:pointer;letter-spacing:-0.3px}
+.btn-create-submit:hover{background:var(--accent-hover)}
+@media(max-width:500px){.create-row{flex-direction:column;gap:0}}
 .create-form{display:flex;gap:0;max-width:440px;margin:0 auto 16px;border:1.5px solid var(--border);background:#fff}
 .create-form:focus-within{border-color:#111}
 .create-form input{flex:1;border:none;padding:14px 16px;font-size:15px;font-family:var(--font);outline:none;background:transparent;color:var(--text)}

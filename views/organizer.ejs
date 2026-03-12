@@ -177,6 +177,27 @@ input:focus,select:focus{border-color:#111111}
   <div class="page-title"><%= event.title %></div>
   <div class="page-meta"><%= [event.date, event.location].filter(Boolean).join(' · ') %> &nbsp;·&nbsp; Organizer dashboard</div>
 
+  <%# Edit event info %>
+  <div class="details-section">
+    <h3>📝 Event Info</h3>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/update-info">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <div class="details-grid">
+        <div class="details-field" style="grid-column:1/-1">
+          <label>Title</label>
+          <input type="text" name="title" value="<%= event.title %>" required style="font-size:16px;font-weight:700">
+        </div>
+        <div class="details-field" style="grid-column:1/-1">
+          <label>Vision / Description</label>
+          <textarea name="vision" rows="3" placeholder="What are you organizing?"><%= event.vision || '' %></textarea>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button type="submit" style="background:#111;color:#fff;border:none;padding:8px 18px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">Save info</button>
+      </div>
+    </form>
+  </div>
+
   <%# Event details section %>
   <div class="details-section">
     <h3>📅 Time & Location</h3>

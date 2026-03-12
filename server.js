@@ -91,6 +91,7 @@ db.exec(`
 `);
 try { db.exec('ALTER TABLE events ADD COLUMN account_id TEXT'); } catch(e) {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN profile_pic TEXT'); } catch(e) {}
+try { db.exec("ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'active'"); } catch(e) {}
 
 function genId(len = 10) {
   return crypto.randomBytes(Math.ceil(len * 0.75)).toString('hex').slice(0, len);
@@ -302,6 +303,56 @@ ${urls.map(u => `  <url>
   res.type('application/xml').send(xml);
 });
 
+// ── Event Templates ─────────────────────────────────────────────────────────
+const EVENT_TEMPLATES = [
+  {
+    id: 'beach-cleanup',
+    name: '🏖️ Beach Cleanup',
+    vision: 'Organize a beach cleanup day. We need people to bring trash bags and grabbers, coordinate with the city for dumpster placement, set up a check-in table, provide water and snacks for volunteers, and take before/after photos for social media.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'block-party',
+    name: '🎉 Block Party',
+    vision: 'Plan a neighborhood block party. We need someone to handle the city street closure permit, set up tables and chairs, coordinate a potluck sign-up, arrange music/DJ or a playlist, organize kids activities, and handle cleanup afterward.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'fundraiser',
+    name: '💰 Fundraiser',
+    vision: 'Run a community fundraiser event. We need people to handle venue setup, manage ticket sales or donations at the door, coordinate food and beverages, arrange entertainment or speakers, handle social media promotion, and manage thank-you notes to donors.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'protest-march',
+    name: '✊ Rally / March',
+    vision: 'Organize a peaceful rally or march. We need a route coordinator, someone to handle city permits, volunteer marshals for crowd safety, a sound system operator, sign-making materials and distribution, a first aid volunteer, and someone to handle media/press coordination.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'potluck',
+    name: '🍕 Potluck',
+    vision: 'Host a community potluck gathering. We need people to bring main dishes, sides, desserts, and drinks. Someone should handle plates/cups/utensils, table setup, and cleanup. We also need someone to coordinate the dish sign-up so we get variety.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'volunteer-day',
+    name: '🤝 Volunteer Day',
+    vision: 'Coordinate a volunteer service day. We need a project lead to define work areas, tool and supply coordinators, a safety briefer, someone to handle volunteer sign-in and waivers, provide lunch and water, and a photographer to document the day.',
+    defaults: { is_private: '0' }
+  },
+  {
+    id: 'meetup',
+    name: '☕ Meetup / Hangout',
+    vision: 'Organize a casual meetup. We need someone to reserve the venue or pick a spot, handle the headcount RSVP, coordinate food/drink orders, and spread the word on social media.',
+    defaults: { is_private: '1' }
+  }
+];
+
+app.get('/api/templates', (req, res) => {
+  res.json(EVENT_TEMPLATES.map(t => ({ id: t.id, name: t.name, vision: t.vision })));
+});
+
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -393,7 +444,9 @@ app.get('/event/:id', async (req, res) => {
   const ogTotalNeeded = tasks.filter(t => t.quantity_needed > 0).reduce((s,t) => s + t.quantity_needed, 0);
   const ogTotalClaimed = tasks.filter(t => t.quantity_needed > 0).reduce((s,t) => s + t.quantity_claimed, 0);
   const ogPct = ogTotalNeeded > 0 ? Math.round(ogTotalClaimed / ogTotalNeeded * 100) : 0;
-  res.render('event', { event, tasks, claimsByTask, pendingByTask, qrDataUrl, eventUrl, claimed: req.query.claimed, pending: req.query.pending, account: getAccount(req), baseUrl: BASE_URL, ogPct, ogTotalClaimed, ogTotalNeeded });
+  const uniquePeople = db.prepare("SELECT COUNT(DISTINCT LOWER(email)) as c FROM claims WHERE event_id = ? AND status = 'approved' AND email != ''").get(event.id).c;
+  const totalPeople = db.prepare("SELECT COUNT(*) as c FROM claims WHERE event_id = ? AND status = 'approved'").get(event.id).c;
+  res.render('event', { event, tasks, claimsByTask, pendingByTask, qrDataUrl, eventUrl, claimed: req.query.claimed, pending: req.query.pending, account: getAccount(req), baseUrl: BASE_URL, ogPct, ogTotalClaimed, ogTotalNeeded, peopleCount: uniquePeople || totalPeople });
 });
 
 // Claim a task
@@ -687,6 +740,17 @@ app.post('/organizer/:token/update-details', (req, res) => {
 });
 
 
+// Update event info (title, vision, description)
+app.post('/organizer/:token/update-info', (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
+  if (!event) return res.status(404).send('Not found');
+  const { title, vision, description } = req.body;
+  if (!title || !title.trim()) return res.redirect(`/organizer/${req.params.token}?error=Title is required`);
+  db.prepare('UPDATE events SET title = ?, vision = ?, description = ? WHERE id = ?')
+    .run(title.trim(), (vision || '').trim(), (description || '').trim(), event.id);
+  res.redirect(`/organizer/${req.params.token}?saved=1`);
+});
+
 // Reorder tasks
 app.post('/organizer/:token/reorder', (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
@@ -952,7 +1016,7 @@ app.post('/account/photo/remove', requireAuth, (req, res) => {
 app.get('/explore', (req, res) => {
   const q = req.query.q || '';
   const sort = req.query.sort || 'newest';
-  let query = "SELECT * FROM events WHERE is_private = 0";
+  let query = "SELECT * FROM events WHERE is_private = 0 AND (status IS NULL OR status = 'active')";
   const params = [];
   if (q) {
     query += " AND (LOWER(title) LIKE ? OR LOWER(location) LIKE ? OR LOWER(vision) LIKE ?)";
@@ -961,6 +1025,7 @@ app.get('/explore', (req, res) => {
   }
   switch(sort) {
     case 'soonest': query += " ORDER BY date ASC"; break;
+    case 'upcoming': query += " AND date >= date('now') ORDER BY date ASC"; break;
     case 'popular': query += " ORDER BY (SELECT COUNT(*) FROM claims WHERE claims.event_id = events.id AND status != 'denied') DESC"; break;
     default: query += " ORDER BY created_at DESC";
   }
