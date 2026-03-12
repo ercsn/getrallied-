@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title><%= event.title %> — Organizer · GetRallied</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--surface:#f7f6f4;--border:#e5e2dc;--text:#111;--muted:#777;--faint:#bbb;--accent:#111111;--accent-hover:#a84f14;--green:#111111;--green-bg:#f5f5f5;--font:'Inter',sans-serif}
+body{background:var(--bg);color:var(--text);font-family:var(--font)}
+nav{border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:16px;font-weight:800;letter-spacing:-0.5px;text-decoration:none;color:var(--text)}.logo span{color:#111111}
+.nav-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#111111;background:#fef3ec;padding:4px 10px}
+.public-link{font-size:13px;font-weight:600;color:#111111;text-decoration:none}
+.public-link:hover{text-decoration:underline}
+.success-bar{background:#fef3ec;border-bottom:1px solid #f5d5ba;padding:12px 24px;text-align:center;font-size:14px;color:#111111;font-weight:600}
+.main{max-width:720px;margin:0 auto;padding:32px 24px}
+.page-title{font-size:26px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px}
+.page-meta{font-size:14px;color:var(--muted);margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat{border:1px solid var(--border);padding:16px 18px}
+.stat-val{font-size:30px;font-weight:900;margin-bottom:2px}
+.stat-val.accent{color:#111111}
+.stat-val.green{color:var(--green)}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.share-bar{border:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.share-bar-label{font-size:13px;font-weight:700;white-space:nowrap;color:var(--text)}
+.copy-row{flex:1;display:flex;gap:0;border:1px solid var(--border)}
+.copy-row input{flex:1;border:none;padding:8px 12px;font-size:12px;font-family:monospace;outline:none;background:#fff;color:var(--text)}
+.copy-btn{background:#111111;color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.copy-btn:hover{background:var(--accent-hover)}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px}
+.drag-handle{cursor:grab;color:#ccc;font-size:16px;padding:0 6px 0 0;user-select:none;flex-shrink:0}
+.drag-handle:hover{color:#999}
+.task-row.dragging{opacity:0.4;border:2px dashed #999}
+.task-row.drag-over{border-top:2px solid #111}
+.task-row{border:1px solid var(--border);padding:16px 18px;margin-bottom:8px}
+.task-row-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.task-row-title{font-size:15px;font-weight:700;flex:1}
+.badge{font-size:11px;font-weight:700;padding:3px 8px}
+.badge-open{background:#fff;color:#111;border:1px solid #111}
+.badge-full{background:#111;color:#fff;border:1px solid #111}
+.task-meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+.claimants-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.claimant{background:var(--surface);border:1px solid var(--border);padding:7px 12px;display:flex;gap:10px;align-items:center;font-size:13px}
+.claimant-name{font-weight:600;flex:1}
+.claimant-contact{font-size:12px;color:var(--muted)}
+.no-claims{font-size:12px;color:var(--faint);font-style:italic}
+.del-form{margin-left:auto}
+.del-btn{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0 4px}
+.del-btn:hover{color:#c0392b}
+.add-section{border:1px dashed var(--border);padding:20px;margin-top:24px}
+.add-section h4{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+input,select{width:100%;border:1px solid var(--border);padding:9px 12px;font-size:13px;font-family:var(--font);outline:none;color:var(--text);background:#fff}
+input:focus,select:focus{border-color:#111111}
+.add-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:9px 20px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer}
+.add-btn:hover{border-color:#111111;color:#111111}
+.pending-section{background:#fef9ec;border:1px solid #f5e4ba;padding:16px 18px;margin-bottom:24px}
+.pending-header{font-size:13px;font-weight:700;color:#92670a;margin-bottom:12px}
+.pending-card{background:#fff;border:1px solid #f5e4ba;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px}
+.pending-info{flex:1}
+.pending-name{font-size:14px;font-weight:700}
+.pending-task{font-size:12px;color:var(--muted);margin-top:2px}
+.pending-contact{font-size:11px;color:var(--faint);margin-top:3px}
+.pending-actions{display:flex;gap:6px;flex-shrink:0}
+.people-toggle-btn{background:none;border:none;font-family:var(--font);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;padding:0;letter-spacing:-.3px;color:#fff}
+.people-toggle-btn .chevron{font-size:11px;color:#888;transition:transform .2s}
+.people-toggle-btn.open .chevron{transform:rotate(180deg)}
+.people-body{display:none;padding:16px 18px}
+.people-body.open{display:block}
+.email-btn{display:inline-flex;align-items:center;gap:4px;background:#111;color:#fff;padding:4px 10px;font-size:11px;font-weight:700;font-family:var(--font);text-decoration:none;white-space:nowrap}
+.email-btn:hover{background:#333}
+.people-wrap{max-width:720px;margin:0 auto;padding:0 24px}
+.people-section{margin-bottom:24px}
+.people-header{display:flex;align-items:center;justify-content:space-between;
+  background:#111;padding:14px 18px;margin-bottom:0}
+.people-body{background:#fff;border:1px solid #111;border-top:none}
+.people-header h2{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.export-btn{background:#fff;color:#111;padding:7px 14px;font-size:12px;font-weight:700;font-family:var(--font);text-decoration:none;display:inline-block;letter-spacing:.3px}
+.export-btn:hover{background:#e5e5e5}
+.people-table{width:100%;border-collapse:collapse;font-size:13px}
+.people-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#aaa;padding:6px 12px 8px;border-bottom:1px solid #e5e5e5}
+.people-table td{padding:12px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+.people-table tr:last-child td{border-bottom:none}
+.people-table tr:hover td{background:#fafafa}
+.people-name{font-weight:700;font-size:14px}
+.people-email{color:#111;font-size:13px}
+.people-phone{color:#aaa;font-size:12px;margin-top:2px}
+.status-pill{font-size:10px;font-weight:700;padding:3px 8px;border:1px solid;text-transform:uppercase;letter-spacing:.5px}
+.pill-approved{background:#f5f5f5;color:#111;border-color:#ddd}
+.pill-pending{background:#fef9ec;color:#92670a;border-color:#f5e4ba}
+.empty-people{color:#aaa;font-size:14px;padding:16px 0;text-align:center}
+.row-btn{background:none;border:1px solid #ddd;padding:3px 9px;font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;color:#555}
+.row-btn:hover{border-color:#111;color:#111}
+.row-btn.danger:hover{border-color:#c00;color:#c00}
+.add-person-bar{padding:12px 18px;border-top:1px solid #eee;display:flex;justify-content:flex-end}
+.add-person-form{padding:16px 18px;border-top:1px solid #eee;background:#fafafa;display:none}
+.add-person-form.open{display:block}
+.person-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.person-form-grid input,.person-form-grid select,.person-form-full{width:100%;border:1px solid var(--border);padding:8px 10px;font-size:13px;font-family:var(--font);outline:none;background:#fff}
+.person-form-full{margin-bottom:10px}
+.person-form-grid input:focus,.person-form-grid select:focus,.person-form-full:focus{border-color:#111}
+.inline-edit-row{display:none;background:#fafafa}
+.inline-edit-row.open{display:table-row}
+.inline-edit-row td{padding:10px 12px;border-bottom:1px solid #eee}
+.details-section{border:1px solid var(--border);padding:20px 22px;margin-bottom:16px}
+.details-section h3{font-size:13px;font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
+.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.details-field{display:flex;flex-direction:column;gap:4px}
+.details-field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.details-field input,.details-field textarea{border:1px solid var(--border);padding:8px 10px;font-size:13px;font-family:var(--font);outline:none}
+.details-field input:focus,.details-field textarea:focus{border-color:#111}
+.details-field textarea{resize:vertical;min-height:56px}
+.upload-section{border:1px solid var(--border);padding:20px 22px;margin-bottom:24px}
+.upload-section h3{font-size:13px;font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.upload-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.upload-field input[type="file"]{width:100%;font-size:12px;font-family:var(--font)}
+.upload-preview{width:100%;height:80px;object-fit:cover;margin-top:8px;border:1px solid var(--border);display:block}
+.upload-preview-logo{height:44px;margin-top:8px;display:block}
+.approve-btn{background:#111111;color:#fff;border:none;padding:6px 14px;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;text-decoration:none;display:inline-block}
+.deny-btn{background:#fff;border:1px solid var(--border);color:var(--muted);padding:6px 12px;font-size:12px;font-family:var(--font);cursor:pointer;text-decoration:none;display:inline-block}
+.trust-bar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);padding:12px 16px;margin-bottom:20px;flex-wrap:wrap}
+.trust-toggle{background:none;border:1px solid var(--border);padding:4px 10px;font-size:11px;font-family:var(--font);cursor:pointer;color:var(--muted)}
+.trust-toggle:hover{border-color:#111111;color:#111111}
+.trust-toggle.on{background:#111111;color:#fff;border-color:#111111}
+.claimant-status{font-size:9px;font-weight:700;padding:2px 6px;border:1px solid;margin-left:4px}
+.status-pending{background:#fef9ec;color:#92670a;border-color:#f5e4ba}
+.status-denied{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.status-approved{background:#f5f5f5;color:#111111;border-color:#ddd}
+
+  /* === B&W Retheme === */
+  :root {
+    --accent: #111111;
+    --accent-hover: #333333;
+  }
+  .claim-btn, .add-btn, .approve-btn, button[type="submit"] {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+  }
+  .claim-btn:hover, .add-btn:hover, button[type="submit"]:hover {
+    background: #333 !important;
+    border-color: #333 !important;
+  }
+  .deny-btn {
+    background: #fff !important;
+    color: #111 !important;
+    border: 1px solid #111 !important;
+  }
+  .deny-btn:hover { background: #f5f5f5 !important; }
+  .trust-toggle.on {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+  }
+  .badge-open { background: #111 !important; color: #fff !important; }
+  .success-bar { background: #f5f5f5 !important; border-color: #ddd !important; color: #111 !important; }
+  a { color: #111; }
+  a:hover { color: #444; }
+
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/"><img src="/logo.png" alt="GetRallied" style="height:72px;display:block"></a>
+  <a href="<%= eventUrl %>" target="_blank" class="public-link">View public page →</a>
+</nav>
+
+<% if (typeof saved !== 'undefined' && saved) { %>
+  <div class="success-bar"> Event details saved.</div>
+  <% } %>
+  <% if (isNew) { %>
+<div class="success-bar">🎉 Your event is live — share the link below and watch people claim tasks.</div>
+<% } %>
+
+<div class="main">
+  <div class="page-title"><%= event.title %></div>
+  <div class="page-meta"><%= [event.date, event.location].filter(Boolean).join(' · ') %> &nbsp;·&nbsp; Organizer dashboard</div>
+
+  <%# Event details section %>
+  <div class="details-section">
+    <h3>📅 Time & Location</h3>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/update-details">
+      <div class="details-grid">
+        <div class="details-field">
+          <label>Date</label>
+          <input type="text" name="date" value="<%= event.date || '' %>" placeholder="Saturday, March 28">
+        </div>
+        <div class="details-field">
+          <label>Time</label>
+          <input type="text" name="event_time" value="<%= event.event_time || '' %>" placeholder="2 – 4pm PDT">
+        </div>
+        <div class="details-field">
+          <label>Location name</label>
+          <input type="text" name="location_name" value="<%= event.location_name || '' %>" placeholder="Intersection By Ferry Terminal">
+        </div>
+        <div class="details-field">
+          <label>Google Maps URL</label>
+          <input type="text" name="location_maps_url" value="<%= event.location_maps_url || '' %>" placeholder="https://maps.google.com/...">
+        </div>
+        <div class="details-field" style="grid-column:1/-1">
+          <label>Full address</label>
+          <textarea name="location_address" placeholder="Winslow Way East & Olympic Drive Southeast&#10;Bainbridge Island, WA 98110"><%= event.location_address || '' %></textarea>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button type="submit" style="background:#111;color:#fff;border:none;padding:8px 18px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">Save details</button>
+      </div>
+    </form>
+  </div>
+
+  <%# Image uploads section %>
+  <div class="upload-section">
+    <h3>🖼 Event images</h3>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/upload-images" enctype="multipart/form-data">
+      <div class="upload-grid">
+        <div class="upload-field">
+          <label>Org / Group logo</label>
+          <input type="file" name="org_logo" accept="image/*">
+          <% if (event.org_logo) { %><img src="<%= event.org_logo %>" class="upload-preview-logo" alt="Current logo"><% } %>
+        </div>
+        <div class="upload-field">
+          <label>Event banner</label>
+          <input type="file" name="banner_image" accept="image/*">
+          <% if (event.banner_image) { %><img src="<%= event.banner_image %>" class="upload-preview" alt="Current banner"><% } %>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button type="submit" style="background:#111;color:#fff;border:none;padding:8px 18px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">Save images</button>
+        <span style="font-size:11px;color:var(--faint);margin-left:10px">JPG, PNG, GIF, WebP · max 5MB each</span>
+      </div>
+    </form>
+  </div>
+
+  <div class="trust-bar">
+    <span style="font-size:13px;font-weight:600"><%= event.is_private ? "🔒 Private" : "🌐 Public" %></span>
+    <span style="font-size:12px;color:var(--muted)"><%= event.is_private ? "Only people with the link can see this event" : "Anyone can find and view this event" %></span>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/toggle-privacy" style="display:inline">
+      <button type="submit" class="trust-toggle <%= event.is_private ? 'on' : '' %>"><%= event.is_private ? "Make public" : "Make private" %></button>
+    </form>
+    <span style="color:var(--border);margin:0 4px">|</span>
+    <span style="font-size:11px;color:var(--muted)">🔒 lock individual tasks below to require your approval</span>
+  </div>
+
+  <% if (typeof pendingClaims !== 'undefined' && pendingClaims.length > 0) { %>
+  <div class="pending-section">
+    <div class="pending-header">⏳ Pending approvals — <%= pendingClaims.length %> waiting</div>
+    <% pendingClaims.forEach(function(claim) { %>
+    <% var claimTask = tasks.find(function(t){ return t.id === claim.task_id; }); %>
+    <div class="pending-card">
+      <div class="pending-info">
+        <div class="pending-name">👤 <%= claim.name %></div>
+        <div class="pending-task">Wants: <strong><%= claimTask ? claimTask.title : 'Unknown task' %></strong></div>
+        <div class="pending-contact"><%= [claim.email, claim.phone].filter(Boolean).join(' · ') || 'No contact info' %></div>
+        <% if (claim.note) { %><div class="pending-contact" style="font-style:italic">"<%= claim.note %>"</div><% } %>
+      </div>
+      <div class="pending-actions">
+        <a href="/organizer/<%= event.organizer_token %>/approve-claim/<%= claim.id %>" class="approve-btn">✓ Approve</a>
+        <a href="/organizer/<%= event.organizer_token %>/deny-claim/<%= claim.id %>" class="deny-btn">✗ Decline</a>
+      </div>
+    </div>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val"><%= tasks.length %></div><div class="stat-label">Total tasks</div></div>
+    <div class="stat"><div class="stat-val accent"><%= totalNeeded - totalClaimed %></div><div class="stat-label">Still open</div></div>
+    <div class="stat"><div class="stat-val green"><%= totalClaimed %></div><div class="stat-label">Claimed</div></div>
+  </div>
+
+  <div class="share-bar">
+    <span class="share-bar-label">🔗 Share link</span>
+    <div class="copy-row">
+      <input type="text" id="share-url" readonly value="<%= eventUrl %>">
+      <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('share-url').value);this.textContent='Copied!'">Copy</button>
+    </div>
+  </div>
+
+<div class="people-wrap">
+  <div class="people-section">
+    <div class="people-header">
+      <button class="people-toggle-btn" onclick="togglePeople(this)">
+        👥 People (<%= allClaimsWithTask.filter(c => c.status !== 'denied').length %>)
+        <span class="chevron">▼</span>
+      </button>
+    </div>
+    <div class="people-body" id="people-body">
+      <div style="text-align:right;margin-bottom:10px"><a href="/organizer/<%= event.organizer_token %>/export.csv" class="export-btn">↓ Export CSV</a></div>
+      <% const activeClaims = allClaimsWithTask.filter(c => c.status !== 'denied'); %>
+      <% if (activeClaims.length === 0) { %>
+        <p class="empty-people">No sign-ups yet — share the event link to get people claiming tasks.</p>
+      <% } else { %>
+      <table class="people-table" id="people-table">
+        <thead><tr><th>Name</th><th>Contact</th><th>Task</th><th>Status</th><th>Note</th><th></th></tr></thead>
+        <tbody id="people-tbody">
+          <% activeClaims.forEach(c => { %>
+          <tr data-claim-id="<%= c.id %>">
+            <td><div class="people-name"><%= c.name %></div></td>
+            <td>
+              <% if (c.email) { %>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div>
+                  <div class="people-email"><%= c.email %></div>
+                  <% if (c.phone) { %><div class="people-phone"><%= c.phone %></div><% } %>
+                </div>
+                <a href="mailto:<%= c.email %>?subject=<%= encodeURIComponent(event.title) %>" class="email-btn">✉</a>
+              </div>
+              <% } else if (c.phone) { %>
+                <div class="people-phone"><%= c.phone %></div>
+              <% } else { %><span style="color:#ccc">—</span><% } %>
+            </td>
+            <td class="task-cell" style="color:#555"><%= c.task ? c.task.title : '—' %></td>
+            <td><span class="status-pill <%= c.status === 'pending' ? 'pill-pending' : 'pill-approved' %>"><%= c.status === 'pending' ? 'Pending' : 'Confirmed' %></span></td>
+            <td class="note-cell" style="color:#aaa;font-size:12px"><%= c.note || '—' %></td>
+            <td style="white-space:nowrap">
+              <button class="row-btn edit-btn"
+                data-id="<%= c.id %>"
+                data-name="<%= c.name %>"
+                data-email="<%= c.email||'' %>"
+                data-phone="<%= c.phone||'' %>"
+                data-task="<%= c.task_id||'' %>"
+                data-note="<%= c.note||'' %>">Edit</button>
+              <button class="row-btn danger del-btn" data-id="<%= c.id %>">✕</button>
+            </td>
+          </tr>
+          <tr class="inline-edit-row" id="edit-row-<%= c.id %>">
+            <td colspan="6">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                <input class="ef-name" placeholder="Name" style="border:1px solid #ddd;padding:7px 9px;font-size:13px;font-family:var(--font);outline:none">
+                <select class="ef-task" style="border:1px solid #ddd;padding:7px 9px;font-size:13px;font-family:var(--font);outline:none">
+                  <option value="">— No task —</option>
+                  <% tasks.forEach(t => { %><option value="<%= t.id %>"><%= t.title %></option><% }); %>
+                </select>
+                <input class="ef-email" placeholder="Email" style="border:1px solid #ddd;padding:7px 9px;font-size:13px;font-family:var(--font);outline:none">
+                <input class="ef-phone" placeholder="Phone" style="border:1px solid #ddd;padding:7px 9px;font-size:13px;font-family:var(--font);outline:none">
+              </div>
+              <input class="ef-note" placeholder="Note" style="width:100%;border:1px solid #ddd;padding:7px 9px;font-size:13px;font-family:var(--font);outline:none;margin-bottom:8px;box-sizing:border-box">
+              <button class="row-btn" style="background:#111;color:#fff;border-color:#111" onclick="saveEdit('<%= c.id %>')">Save</button>
+              <button class="row-btn" onclick="cancelEdit('<%= c.id %>')" style="margin-left:6px">Cancel</button>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <div class="add-person-bar">
+        <button class="row-btn" onclick="toggleAddForm()" id="add-person-btn" style="font-size:12px;padding:6px 14px">+ Add person</button>
+      </div>
+      <div class="add-person-form" id="add-person-form">
+        <div class="person-form-grid">
+          <input id="ap-name" placeholder="Name *" required>
+          <select id="ap-task">
+            <option value="">— Assign to task (optional) —</option>
+            <% tasks.forEach(t => { %><option value="<%= t.id %>"><%= t.title %></option><% }); %>
+          </select>
+          <input id="ap-email" placeholder="Email" type="email">
+          <input id="ap-phone" placeholder="Phone">
+        </div>
+        <input class="person-form-full" id="ap-note" placeholder="Note (optional)">
+        <button class="row-btn" style="background:#111;color:#fff;border-color:#111" onclick="addPerson()">Add person</button>
+        <button class="row-btn" onclick="toggleAddForm()" style="margin-left:8px">Cancel</button>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+  <div class="section-label">Task registry (<%= tasks.length %>)</div>
+  <% tasks.forEach(task => { %>
+  <% const taskClaims = claimsByTask[task.id]||[]; const isUnlimited = task.quantity_needed === 0; const isFull = !isUnlimited && task.quantity_claimed >= task.quantity_needed; %>
+  <div class="task-row" draggable="true" data-task-id="<%= task.id %>">
+    <div class="task-row-header">
+      <span class="drag-handle">⠿</span>
+      <div class="task-row-title"><%= task.title %></div>
+      <span class="badge <%= isFull ? 'badge-full' : 'badge-open' %>"><%= isFull ? 'Full' : isUnlimited ? '∞ open' : (task.quantity_needed - task.quantity_claimed) + ' open' %></span>
+      <button class="trust-toggle <%= task.requires_approval ? 'on' : '' %>"
+        data-task-id="<%= task.id %>" data-token="<%= event.organizer_token %>"
+        onclick="toggleLock(this)"><%= task.requires_approval ? '🔒' : '🔓' %></button>
+      <form class="del-form" method="POST" action="/organizer/<%= event.organizer_token %>/delete-task/<%= task.id %>" onsubmit="return confirm('Remove this task?')">
+        <button type="submit" class="del-btn" title="Remove">✕</button>
+      </form>
+    </div>
+    <% if (task.description) { %><div class="task-meta"><%= task.description %></div><% } %>
+    <% if (taskClaims.length > 0) { %>
+    <div class="claimants-list">
+      <% taskClaims.forEach(c => { %>
+      <div class="claimant">
+        <span class="claimant-name">👤 <%= c.name %></span>
+        <% if (c.status === 'pending') { %><span class="claimant-status status-pending">pending</span><% } %>
+        <% if (c.status === 'denied') { %><span class="claimant-status status-denied">declined</span><% } %>
+        <% if (c.status === 'approved' && task.requires_approval) { %><span class="claimant-status status-approved">approved</span><% } %>
+        <span class="claimant-contact"><%= [c.email, c.phone].filter(Boolean).join(' · ') %></span>
+      </div>
+      <% }); %>
+    </div>
+    <% } else { %><div class="no-claims">No one has claimed this yet</div><% } %>
+  </div>
+  <% }); %>
+
+  <div class="add-section">
+    <h4>Add a task manually</h4>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/add-task">
+      <div class="form-grid">
+        <input type="text" name="title" placeholder="Task title" required>
+        <input type="text" name="description" placeholder="Short description (optional)">
+      </div>
+      <div class="form-grid">
+        <select name="category">
+          <option value="people">🙋 People</option>
+          <option value="skills">🎯 Skills</option>
+          <option value="materials">📦 Materials</option>
+          <option value="logistics">📋 Logistics</option>
+        </select>
+        <input type="number" name="quantity_needed" id="qty-input" placeholder="How many needed?" min="1" value="1" style="width:140px">
+      </div>
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" name="unlimited" value="1" onchange="var q=document.getElementById('qty-input');q.disabled=this.checked;q.style.opacity=this.checked?'0.3':'1'">
+          ∞ Unlimited spots
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" name="requires_approval" value="1">
+          🔒 Require my approval
+        </label>
+      </div>
+      <button type="submit" class="add-btn">+ Add task</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const token = '<%= event.organizer_token %>';
+  let dragged = null;
+
+  document.querySelectorAll('.task-row').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragged = row;
+      setTimeout(() => row.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.task-row').forEach(r => r.classList.remove('drag-over'));
+      // Save new order
+      const order = [...document.querySelectorAll('.task-row')].map(r => r.dataset.taskId);
+      fetch('/organizer/' + token + '/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+      });
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.task-row').forEach(r => r.classList.remove('drag-over'));
+      if (row !== dragged) row.classList.add('drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (row !== dragged) {
+        const list = row.parentNode;
+        const rows = [...list.querySelectorAll('.task-row')];
+        const dragIdx = rows.indexOf(dragged);
+        const dropIdx = rows.indexOf(row);
+        if (dragIdx < dropIdx) list.insertBefore(dragged, row.nextSibling);
+        else list.insertBefore(dragged, row);
+      }
+    });
+  });
+})();
+</script>
+
+
+
+<script>
+const orgToken = '<%= event.organizer_token %>';
+const eventTitle = encodeURIComponent('<%= event.title %>');
+
+function updateCount() {
+  const n = document.querySelectorAll('#people-tbody tr[data-claim-id]').length;
+  const btn = document.getElementById('people-toggle');
+  if (btn) btn.firstChild.textContent = '\u{1F465} People (' + n + ') ';
+}
+
+// Event delegation for edit + delete buttons
+document.addEventListener('click', function(e) {
+  const editBtn = e.target.closest('.edit-btn');
+  const delBtn = e.target.closest('.del-btn');
+  if (editBtn) {
+    cancelAllEdits();
+    const id = editBtn.dataset.id;
+    const row = document.getElementById('edit-row-' + id);
+    if (!row) return;
+    row.querySelector('.ef-name').value = editBtn.dataset.name;
+    row.querySelector('.ef-email').value = editBtn.dataset.email;
+    row.querySelector('.ef-phone').value = editBtn.dataset.phone;
+    row.querySelector('.ef-note').value = editBtn.dataset.note;
+    row.querySelector('.ef-task').value = editBtn.dataset.task;
+    row.classList.add('open');
+  }
+  if (delBtn) {
+    if (!confirm('Remove this person?')) return;
+    const id = delBtn.dataset.id;
+    fetch('/organizer/' + orgToken + '/person/' + id, { method: 'DELETE' })
+      .then(r => r.json()).then(d => {
+        if (d.ok) {
+          const r1 = document.querySelector('tr[data-claim-id="' + id + '"]');
+          const r2 = document.getElementById('edit-row-' + id);
+          if (r1) r1.remove();
+          if (r2) r2.remove();
+          updateCount();
+        }
+      });
+  }
+});
+
+function cancelEdit(id) { document.getElementById('edit-row-' + id).classList.remove('open'); }
+function cancelAllEdits() { document.querySelectorAll('.inline-edit-row.open').forEach(r => r.classList.remove('open')); }
+
+function saveEdit(id) {
+  const row = document.getElementById('edit-row-' + id);
+  const body = new URLSearchParams({
+    name: row.querySelector('.ef-name').value,
+    email: row.querySelector('.ef-email').value,
+    phone: row.querySelector('.ef-phone').value,
+    note: row.querySelector('.ef-note').value,
+    task_id: row.querySelector('.ef-task').value
+  });
+  fetch('/organizer/' + orgToken + '/edit-person/' + id, { method: 'POST', body })
+    .then(r => r.json()).then(d => {
+      if (!d.ok) return;
+      const mainRow = document.querySelector('tr[data-claim-id="' + id + '"]');
+      const name = row.querySelector('.ef-name').value;
+      const email = row.querySelector('.ef-email').value;
+      const phone = row.querySelector('.ef-phone').value;
+      const note = row.querySelector('.ef-note').value;
+      mainRow.cells[0].innerHTML = '<div class="people-name">' + name + '</div>';
+      let contactHtml = '';
+      if (email) contactHtml = '<div style="display:flex;align-items:center;gap:8px"><div><div class="people-email">' + email + '</div>' + (phone ? '<div class="people-phone">' + phone + '</div>' : '') + '</div><a href="mailto:' + email + '?subject=' + eventTitle + '" class="email-btn">✉</a></div>';
+      else if (phone) contactHtml = '<div class="people-phone">' + phone + '</div>';
+      else contactHtml = '<span style="color:#ccc">—</span>';
+      mainRow.cells[1].innerHTML = contactHtml;
+      mainRow.querySelector('.task-cell').textContent = d.taskTitle;
+      mainRow.querySelector('.note-cell').textContent = note || '—';
+      // Update data attrs on edit button
+      const eb = mainRow.querySelector('.edit-btn');
+      eb.dataset.name = name; eb.dataset.email = email;
+      eb.dataset.phone = phone; eb.dataset.note = note;
+      eb.dataset.task = row.querySelector('.ef-task').value;
+      row.classList.remove('open');
+    });
+}
+
+function toggleAddForm() {
+  const form = document.getElementById('add-person-form');
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) document.getElementById('ap-name').focus();
+}
+
+function addPerson() {
+  const name = document.getElementById('ap-name').value.trim();
+  if (!name) { alert('Name is required'); return; }
+  const body = new URLSearchParams({
+    name, email: document.getElementById('ap-email').value,
+    phone: document.getElementById('ap-phone').value,
+    note: document.getElementById('ap-note').value,
+    task_id: document.getElementById('ap-task').value
+  });
+  fetch('/organizer/' + orgToken + '/add-person', { method: 'POST', body })
+    .then(r => r.json()).then(d => {
+      if (!d.ok) return;
+      const c = d.claim;
+      const tbody = document.getElementById('people-tbody');
+      let contactHtml = '';
+      if (c.email) contactHtml = '<div style="display:flex;align-items:center;gap:8px"><div><div class="people-email">' + c.email + '</div>' + (c.phone ? '<div class="people-phone">' + c.phone + '</div>' : '') + '</div><a href="mailto:' + c.email + '?subject=' + eventTitle + '" class="email-btn">✉</a></div>';
+      else if (c.phone) contactHtml = '<div class="people-phone">' + c.phone + '</div>';
+      else contactHtml = '<span style="color:#ccc">—</span>';
+      const tr = document.createElement('tr');
+      tr.dataset.claimId = c.id;
+      tr.innerHTML = '<td><div class="people-name">' + c.name + '</div></td>'
+        + '<td>' + contactHtml + '</td>'
+        + '<td class="task-cell" style="color:#555">' + d.taskTitle + '</td>'
+        + '<td><span class="status-pill pill-approved">Confirmed</span></td>'
+        + '<td class="note-cell" style="color:#aaa;font-size:12px">' + (c.note||'—') + '</td>'
+        + '<td style="white-space:nowrap"><button class="row-btn edit-btn" data-id="' + c.id + '" data-name="' + c.name + '" data-email="' + (c.email||'') + '" data-phone="' + (c.phone||'') + '" data-task="' + (c.task_id||'') + '" data-note="' + (c.note||'') + '">Edit</button> <button class="row-btn danger del-btn" data-id="' + c.id + '">✕</button></td>';
+      tbody.appendChild(tr);
+      ['ap-name','ap-email','ap-phone','ap-note'].forEach(i => document.getElementById(i).value = '');
+      document.getElementById('ap-task').value = '';
+      document.getElementById('add-person-form').classList.remove('open');
+      updateCount();
+      const empty = document.querySelector('.empty-people');
+      if (empty) empty.style.display = 'none';
+    });
+}
+</script>
+<script>
+function togglePeople(btn) {
+  btn.classList.toggle('open');
+  document.getElementById('people-body').classList.toggle('open');
+}
+function toggleLock(btn) {
+  fetch('/organizer/' + btn.dataset.token + '/toggle-approval/' + btn.dataset.taskId, {method:'POST'})
+    .then(() => {
+      const on = btn.classList.toggle('on');
+      btn.textContent = on ? '\uD83D\uDD12' : '\uD83D\uDD13';
+    });
+}
+</script>
+</body>
+</html>

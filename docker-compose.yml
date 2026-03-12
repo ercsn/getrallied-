@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  getrallied:
+    build: .
+    ports:
+      - "19100:19100"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+    restart: unless-stopped

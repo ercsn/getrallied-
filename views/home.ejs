@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GetRallied — Organize anything. Together.</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--surface:#f7f6f4;--border:#e5e2dc;
+  --text:#111;--muted:#777;--faint:#bbb;
+  --accent:#111111;--accent-hover:#333333;
+  --font:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;display:flex;flex-direction:column}
+nav{border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between}
+.nav-tag{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.hero{flex:1;display:flex;align-items:center;justify-content:center;padding:60px 24px}
+.hero-inner{max-width:580px;width:100%;text-align:center}
+h1{font-size:clamp(1.4rem,4vw,2rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:12px}
+h1 em{font-style:normal}
+.sub{font-size:17px;color:var(--muted);line-height:1.6;max-width:400px;margin:0 auto 32px}
+.video-wrap{max-width:520px;margin:0 auto 32px;border:2px solid #111;background:#000}
+.video-wrap video{width:100%;display:block}
+.form-wrap{display:flex;gap:0;max-width:400px;margin:0 auto 16px;border:1.5px solid var(--border);background:#fff}
+.form-wrap:focus-within{border-color:#111}
+.form-wrap input{flex:1;border:none;padding:13px 16px;font-size:14px;font-family:var(--font);outline:none;background:transparent;color:var(--text)}
+.form-wrap input::placeholder{color:var(--faint)}
+.form-wrap button{background:#111;color:#fff;border:none;padding:13px 20px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap}
+.form-wrap button:hover{background:var(--accent-hover)}
+.form-note{font-size:12px;color:var(--faint);text-align:center}
+footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-top:1px solid var(--border)}
+a{color:#111} a:hover{color:#444}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/"><img src="/logo.png" alt="GetRallied" style="height:38px;display:block"></a>
+  <div class="nav-tag">Coming Soon</div>
+</nav>
+<div class="hero">
+  <div class="hero-inner">
+    <div style="margin-bottom:24px"><img src="/logo.png" alt="GetRallied" style="height:80px;display:block;margin:0 auto"></div>
+    <h1>Organize <em>anything.</em> Together.</h1>
+    <p class="sub">Describe your vision. We break it into tasks. People commit and show up knowing their role.</p>
+    <div class="video-wrap">
+      <video controls preload="metadata" poster="">
+        <source src="/getrallied-intro.mp4" type="video/mp4">
+      </video>
+    </div>
+    <form class="form-wrap" action="/notify" method="POST">
+      <input type="email" name="email" placeholder="your@email.com" required>
+      <button type="submit">Notify me</button>
+    </form>
+    <p class="form-note">No spam — just a heads up when we launch.</p>
+    <p style="margin-top:28px;font-size:13px;color:#888">Already have an event? <a href="/login" style="font-weight:600">Access your dashboard →</a></p>
+  </div>
+</div>
+<footer>© 2026 GetRallied</footer>
+</body>
+</html>

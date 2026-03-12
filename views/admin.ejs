@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — GetRallied</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--surface:#f7f6f4;--border:#e5e2dc;--text:#111;--muted:#777;--faint:#bbb;--accent:#111111;--font:'Inter',sans-serif}
+body{background:var(--bg);color:var(--text);font-family:var(--font)}
+nav{border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:16px;font-weight:800;letter-spacing:-0.5px}.logo span{color:#111111}
+.nav-badge{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#111111;background:#fef3ec;padding:4px 10px}
+.main{max-width:860px;margin:0 auto;padding:32px 24px}
+.page-title{font-size:24px;font-weight:900;margin-bottom:4px}
+.page-sub{font-size:14px;color:var(--muted);margin-bottom:28px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px}
+.stat{border:1px solid var(--border);padding:16px 18px}
+.stat-val{font-size:28px;font-weight:900;color:#111111}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:12px}
+.event-card{border:1px solid var(--border);padding:20px;margin-bottom:10px;display:flex;gap:20px;align-items:flex-start}
+.event-card:hover{border-color:#ccc}
+.event-main{flex:1}
+.event-title{font-size:17px;font-weight:800;margin-bottom:4px}
+.event-meta{font-size:13px;color:var(--muted);margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap}
+.event-stats{display:flex;gap:16px}
+.event-stat{font-size:13px}
+.event-stat strong{font-weight:700}
+.event-stat .open{color:#111111}
+.event-stat .claimed{color:#111111}
+.event-links{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0}
+.link-btn{font-size:12px;font-weight:600;text-decoration:none;padding:6px 12px;border:1px solid var(--border);color:var(--text);white-space:nowrap;display:block;text-align:center}
+.link-btn:hover{border-color:#111111;color:#111111}
+.link-btn.primary{background:#111111;color:#fff;border-color:#111111}
+.link-btn.primary:hover{background:#a84f14}
+.event-id{font-size:10px;color:var(--faint);font-family:monospace;margin-top:4px}
+.empty{text-align:center;padding:60px 24px;color:var(--muted);font-size:15px}
+
+  /* === B&W Retheme === */
+  :root {
+    --accent: #111111;
+    --accent-hover: #333333;
+  }
+  .claim-btn, .add-btn, .approve-btn, button[type="submit"] {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+  }
+  .claim-btn:hover, .add-btn:hover, button[type="submit"]:hover {
+    background: #333 !important;
+    border-color: #333 !important;
+  }
+  .deny-btn {
+    background: #fff !important;
+    color: #111 !important;
+    border: 1px solid #111 !important;
+  }
+  .deny-btn:hover { background: #f5f5f5 !important; }
+  .trust-toggle.on {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #111 !important;
+  }
+  .badge-open { background: #111 !important; color: #fff !important; }
+  .success-bar { background: #f5f5f5 !important; border-color: #ddd !important; color: #111 !important; }
+  a { color: #111; }
+  a:hover { color: #444; }
+
+  </style>
+</head>
+<body>
+<div style="padding:24px 32px;border-bottom:1px solid #eee"><a href="/"><img src="/logo.png" alt="GetRallied" style="height:36px;display:block"></a></div>
+<nav>
+  <div class="logo">Get<span>Rallied</span></div>
+  <div class="nav-badge">Admin</div>
+</nav>
+<div class="main">
+  <div class="page-title">All Events</div>
+  <div class="page-sub">Every event created on GetRallied.</div>
+
+  <%
+    const totalEvents = events.length;
+    const totalClaims = Object.values(claimMap).reduce((s,v) => s+v, 0);
+    const totalOpen = Object.values(taskMap).reduce((s,t) => s + Math.max(0, (t.needed||0)-(t.claimed||0)), 0);
+  %>
+  <div class="summary">
+    <div class="stat"><div class="stat-val"><%= totalEvents %></div><div class="stat-label">Events</div></div>
+    <div class="stat"><div class="stat-val"><%= totalClaims %></div><div class="stat-label">Total claims</div></div>
+    <div class="stat"><div class="stat-val"><%= totalOpen %></div><div class="stat-label">Open spots</div></div>
+  </div>
+
+  <div class="section-label">Events (<%= totalEvents %>)</div>
+
+  <% if (events.length === 0) { %>
+  <div class="empty">No events yet.</div>
+  <% } %>
+
+  <% events.forEach(event => { %>
+  <% const ts = taskMap[event.id] || {total:0,needed:0,claimed:0}; const claims = claimMap[event.id] || 0; const open = Math.max(0,(ts.needed||0)-(ts.claimed||0)); %>
+  <div class="event-card">
+    <div class="event-main">
+      <div class="event-title"><%= event.title %></div>
+      <div class="event-meta">
+        <% if (event.date) { %><span>📅 <%= event.date %></span><% } %>
+        <% if (event.location) { %><span>📍 <%= event.location %></span><% } %>
+        <span>🕐 <%= new Date(event.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) %></span>
+        <% if (event.organizer_name) { %><span>👤 <%= event.organizer_name %></span><% } %>
+      </div>
+      <div class="event-stats">
+        <div class="event-stat"><strong><%= ts.total || 0 %></strong> tasks</div>
+        <div class="event-stat"><strong class="open"><%= open %></strong> open</div>
+        <div class="event-stat"><strong class="claimed"><%= ts.claimed || 0 %></strong> claimed</div>
+        <div class="event-stat"><strong><%= claims %></strong> claimants</div>
+      </div>
+      <div class="event-id">ID: <%= event.id %></div>
+    </div>
+    <div class="event-links">
+      <a class="link-btn primary" href="<%= baseUrl %>/event/<%= event.id %>" target="_blank">Public page ↗</a>
+      <a class="link-btn" href="/organizer/<%= event.organizer_token %>" target="_blank">Organizer dashboard</a>
+    </div>
+  </div>
+  <% }); %>
+</div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log in — GetRallied</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--font:'Inter',sans-serif;--text:#111;--muted:#666;--faint:#aaa;--border:#e5e5e5;--surface:#fafafa}
+  body{font-family:var(--font);color:var(--text);background:#fff;min-height:100vh;display:flex;flex-direction:column}
+  nav{border-bottom:1px solid var(--border);padding:16px 32px}
+  .wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px}
+  .card{max-width:400px;width:100%}
+  h1{font-size:24px;font-weight:800;margin-bottom:8px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px;line-height:1.5}
+  input{width:100%;border:1px solid var(--border);padding:12px 14px;font-size:15px;font-family:var(--font);outline:none;margin-bottom:12px}
+  input:focus{border-color:#111}
+  button{width:100%;background:#111;color:#fff;border:none;padding:13px;font-size:15px;font-weight:700;font-family:var(--font);cursor:pointer}
+  button:hover{background:#333}
+  .alert{padding:12px 14px;font-size:13px;margin-bottom:16px;border:1px solid}
+  .alert-success{background:#f5f5f5;border-color:#ddd;color:#111}
+  .alert-error{background:#fff5f5;border-color:#fcc;color:#c00}
+  .back{margin-top:20px;text-align:center;font-size:13px;color:var(--muted)}
+  .back a{color:#111;font-weight:600}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/"><img src="/logo.png" alt="GetRallied" style="height:36px;display:block"></a>
+</nav>
+<div class="wrap">
+  <div class="card">
+    <% if (sent) { %>
+    <div class="alert alert-success"> Check your inbox — we sent you a dashboard link. It expires in 1 hour.</div>
+    <% } else if (error === 'expired') { %>
+    <div class="alert alert-error">That link has expired or already been used. Request a new one below.</div>
+    <% } else if (error === 'noevent') { %>
+    <div class="alert alert-error">No events found for that email address. Double-check it matches what you used when creating your event.</div>
+    <% } else if (error) { %>
+    <div class="alert alert-error">Please enter a valid email address.</div>
+    <% } %>
+
+    <% if (!sent) { %>
+    <h1>Access your dashboard</h1>
+    <p class="sub">Enter the email you used when creating your event. We'll send you a link to your organizer dashboard.</p>
+    <form method="POST" action="/login">
+      <input type="email" name="email" placeholder="your@email.com" required autofocus>
+      <button type="submit">Send my dashboard link</button>
+    </form>
+    <% } %>
+
+    <div class="back"><a href="/">← Back to GetRallied</a></div>
+  </div>
+</div>
+</body>
+</html>

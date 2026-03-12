@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your Events — GetRallied</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--font:'Inter',sans-serif;--text:#111;--muted:#666;--border:#e5e5e5}
+  body{font-family:var(--font);color:var(--text);background:#fff;min-height:100vh;display:flex;flex-direction:column}
+  nav{border-bottom:1px solid var(--border);padding:16px 32px}
+  .wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px}
+  .card{max-width:480px;width:100%}
+  h1{font-size:22px;font-weight:800;margin-bottom:6px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:24px}
+  .event-row{display:block;border:1px solid var(--border);padding:16px 18px;margin-bottom:10px;text-decoration:none;color:var(--text)}
+  .event-row:hover{border-color:#111;background:#fafafa}
+  .event-title{font-size:16px;font-weight:700;margin-bottom:4px}
+  .event-meta{font-size:12px;color:var(--muted)}
+  .arrow{float:right;color:#aaa;font-size:18px;margin-top:2px}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/"><img src="/logo.png" alt="GetRallied" style="height:36px;display:block"></a>
+</nav>
+<div class="wrap">
+  <div class="card">
+    <h1>Your events</h1>
+    <p class="sub">Choose an event to manage.</p>
+    <% events.forEach(e => { %>
+    <a class="event-row" href="/organizer/<%= e.organizer_token %>">
+      <span class="arrow">→</span>
+      <div class="event-title"><%= e.title %></div>
+      <div class="event-meta"><%= e.date || 'Date TBD' %> · <%= e.location || 'Location TBD' %> · <%= e.is_private ? '🔒 Private' : '🌐 Public' %></div>
+    </a>
+    <% }); %>
+  </div>
+</div>
+</body>
+</html>
