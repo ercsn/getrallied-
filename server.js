@@ -148,6 +148,7 @@ function csrfMiddleware(req, res, next) {
   }
   // Skip check for GET/HEAD/OPTIONS
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  // Also check DELETE requests
   const token = req.body?._csrf || req.headers['x-csrf-token'];
   const expected = crypto.createHmac('sha256', req.cookies._csrf_secret).update('csrf').digest('hex');
   if (!token || token !== expected) {
@@ -452,13 +453,37 @@ app.get('/organizer/:token/approve-claim/:claimId', (req, res) => {
   if (!event) return res.status(404).send('Not found');
   const claim = db.prepare('SELECT * FROM claims WHERE id = ? AND event_id = ?').get(req.params.claimId, event.id);
   if (!claim) return res.status(404).send('Claim not found');
+  const task = db.prepare('SELECT title FROM tasks WHERE id = ?').get(claim.task_id);
+  // Show confirmation page instead of auto-approving via GET
+  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Approve Claim</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .card{max-width:400px;border:1.5px solid #e5e2dc;border-radius:8px;padding:32px;text-align:center}
+    h2{font-size:18px;font-weight:800;margin-bottom:12px}p{color:#777;font-size:14px;margin-bottom:20px;line-height:1.5}
+    .btn{display:inline-block;padding:12px 28px;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;text-decoration:none;margin:4px}
+    .approve{background:#111;color:#fff}.deny{background:#fff;color:#777;border:1.5px solid #e5e2dc}</style></head>
+    <body><div class="card"><h2>Approve this claim?</h2>
+    <p><strong>${claim.name}</strong> wants to claim <strong>${task ? task.title : 'a task'}</strong></p>
+    <form method="POST" action="/organizer/${req.params.token}/approve-claim/${claim.id}" style="display:inline">
+      <input type="hidden" name="_csrf" value="${res.locals.csrfToken}">
+      <button type="submit" class="btn approve">✅ Approve</button>
+    </form>
+    <form method="POST" action="/organizer/${req.params.token}/deny-claim/${claim.id}" style="display:inline">
+      <input type="hidden" name="_csrf" value="${res.locals.csrfToken}">
+      <button type="submit" class="btn deny">✗ Decline</button>
+    </form></div></body></html>`);
+});
+app.post('/organizer/:token/approve-claim/:claimId', (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
+  if (!event) return res.status(404).send('Not found');
+  const claim = db.prepare('SELECT * FROM claims WHERE id = ? AND event_id = ?').get(req.params.claimId, event.id);
+  if (!claim) return res.status(404).send('Claim not found');
   db.prepare('UPDATE claims SET status = ? WHERE id = ?').run('approved', claim.id);
   recalcClaimed(claim.task_id);
   res.redirect(`/organizer/${req.params.token}?approved=${claim.id}`);
 });
 
 // Deny claim
-app.get('/organizer/:token/deny-claim/:claimId', (req, res) => {
+app.post('/organizer/:token/deny-claim/:claimId', (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
   if (!event) return res.status(404).send('Not found');
   const claim = db.prepare('SELECT * FROM claims WHERE id = ? AND event_id = ?').get(req.params.claimId, event.id);
@@ -627,9 +652,11 @@ app.post('/organizer/:token/reorder', (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
   if (!event) return res.status(404).json({ error: 'Not found' });
   const { order } = req.body; // array of task IDs in new order
-  if (!Array.isArray(order)) return res.status(400).json({ error: 'Bad request' });
+  if (!Array.isArray(order) || order.length > 100) return res.status(400).json({ error: 'Bad request' });
   const update = db.prepare('UPDATE tasks SET sort_order = ? WHERE id = ? AND event_id = ?');
-  order.forEach((id, i) => update.run(i, id, event.id));
+  order.forEach((id, i) => {
+    if (typeof id === 'string' && /^[a-f0-9]+$/.test(id)) update.run(i, id, event.id);
+  });
   res.json({ ok: true });
 });
 
@@ -644,7 +671,13 @@ app.get('/organizer/:token/export.csv', (req, res) => {
     WHERE c.event_id = ? ORDER BY t.sort_order, c.created_at
   `).all(event.id);
 
-  const escape = v => v ? '"' + String(v).replace(/"/g, '""') + '"' : '""';
+  const escape = v => {
+    if (!v) return '""';
+    let s = String(v);
+    // Prevent CSV formula injection
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  };
   const rows = [
     ['Name', 'Email', 'Phone', 'Task', 'Status', 'Note', 'Signed Up'].map(escape).join(','),
     ...claims.map(c => [c.name, c.email, c.phone, c.task, c.status, c.note, c.created_at].map(escape).join(','))
@@ -800,7 +833,9 @@ app.post('/signin', (req, res) => {
   const account = db.prepare('SELECT * FROM accounts WHERE LOWER(email) = LOWER(?)').get(email.trim());
   if (!account || !bcrypt.compareSync(password, account.password_hash)) return res.redirect('/signin?error=Invalid email or password');
   setAuthCookie(res, account);
-  res.redirect(next);
+  // Prevent open redirect — only allow local paths
+  const safePath = (next && next.startsWith('/') && !next.startsWith('//')) ? next : '/dashboard';
+  res.redirect(safePath);
 });
 
 app.get('/signout', (req, res) => { res.clearCookie('gr_auth'); res.redirect('/'); });
