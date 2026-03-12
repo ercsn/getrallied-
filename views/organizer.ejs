@@ -165,7 +165,7 @@ input:focus,select:focus{border-color:#111111}
 </head>
 <body>
 <%- include("partials/nav", { _navActive: "dashboard" }) %>
-  <a href="<%= eventUrl %>" target="_blank" class="public-link">View public page →</a>
+
 
 <% if (typeof emailed !== 'undefined' && emailed) { %>
 <div class="success-bar">✉️ Message sent to <%= emailed %> volunteer<%= emailed !== '1' ? 's' : '' %>.</div>
@@ -192,6 +192,7 @@ input:focus,select:focus{border-color:#111111}
     <% } %>
   </div>
   <div style="margin:12px 0 20px;display:flex;gap:8px;flex-wrap:wrap">
+    <a href="<%= eventUrl %>" target="_blank" style="padding:6px 14px;border:1.5px solid #e5e2dc;background:#fff;font-size:12px;font-weight:600;font-family:var(--font);color:#555;text-decoration:none;display:inline-block">↗ View public page</a>
     <% if (evtStatus !== 'active') { %>
       <form method="POST" action="/organizer/<%= event.organizer_token %>/update-status" style="display:inline">
         <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
