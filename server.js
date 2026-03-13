@@ -23,7 +23,8 @@ const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = process.env.PORT || 19100;
 const BASE_URL = process.env.BASE_URL || 'https://getrallied.com';
-const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY; // legacy, unused
+const OPENAI_KEY = process.env.OPENAI_KEY;
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'jason@ercsn.com';
 const BREVO_KEY = process.env.BREVO_KEY;
 const ADMIN_PASS = process.env.ADMIN_PASS;
@@ -273,15 +274,15 @@ Rules:
 - Set requires_approval: true for leadership/coordination/security roles (coordinator, safety lead, stage manager, etc.)
 - Set requires_approval: false for general tasks (bring drums, wear a costume, help with setup)`;
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+    body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
   });
   const data = await resp.json();
-  const text = data.content?.[0]?.text || '{}';
+  const text = data.choices?.[0]?.message?.content || '{}';
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON in Claude response');
+  if (!match) throw new Error('No JSON in OpenAI response');
   return JSON.parse(match[0]);
 }
 
