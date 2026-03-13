@@ -104,6 +104,18 @@
     </div>
 
     <p class="member-since">Member since <%= new Date(account.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) %></p>
+
+    <!-- Delete Account -->
+    <div class="section" style="border-color:#fecaca;margin-top:32px">
+      <div class="section-title" style="color:#b91c1c">⚠️ Delete Account</div>
+      <p style="color:#777;font-size:13px;margin-bottom:16px;line-height:1.5">Permanently delete your account and all your data — events, claims, uploads. This cannot be undone.</p>
+      <form method="POST" action="/account/delete" onsubmit="return confirm('This will permanently delete your account, all your events, claims, and data. Are you sure?')">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+        <label>Type your email to confirm: <strong><%= account.email %></strong></label>
+        <input type="email" name="confirm_email" placeholder="<%= account.email %>" required style="margin-bottom:12px">
+        <button type="submit" style="background:#fff;color:#b91c1c;border:1.5px solid #fecaca;padding:10px 18px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;width:100%">Delete my account permanently</button>
+      </form>
+    </div>
   </div>
 </body>
 </html>

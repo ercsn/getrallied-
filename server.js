@@ -26,7 +26,8 @@ const BASE_URL = process.env.BASE_URL || 'https://getrallied.com';
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || 'jason@ercsn.com';
 const BREVO_KEY = process.env.BREVO_KEY;
-const ADMIN_PASS = process.env.ADMIN_PASS || 'getrallied2026';
+const ADMIN_PASS = process.env.ADMIN_PASS;
+if (!ADMIN_PASS) console.warn('⚠️  ADMIN_PASS not set — /admin route is disabled');
 const COOKIE_SECRET = process.env.COOKIE_SECRET || crypto.randomBytes(32).toString('hex');
 
 // DB
@@ -956,6 +957,22 @@ app.post('/organizer/:token/email-volunteers', async (req, res) => {
   res.redirect(`/organizer/${req.params.token}?emailed=${sent}`);
 });
 
+// Delete event and all associated data
+app.post('/organizer/:token/delete-event', (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
+  if (!event) return res.status(404).send('Not found');
+  db.prepare('DELETE FROM event_updates WHERE event_id = ?').run(event.id);
+  db.prepare('DELETE FROM claims WHERE event_id = ?').run(event.id);
+  db.prepare('DELETE FROM tasks WHERE event_id = ?').run(event.id);
+  db.prepare('DELETE FROM events WHERE id = ?').run(event.id);
+  // Clean up uploaded images
+  const fs = require('fs');
+  if (event.org_logo) try { fs.unlinkSync('/opt/ourtask/public' + event.org_logo); } catch(e) {}
+  if (event.banner_image) try { fs.unlinkSync('/opt/ourtask/public' + event.banner_image); } catch(e) {}
+  const account = getAccount(req);
+  res.redirect(account ? '/dashboard' : '/');
+});
+
 // Post event update
 app.post('/organizer/:token/post-update', (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE organizer_token = ?').get(req.params.token);
@@ -1325,6 +1342,32 @@ app.post('/account/photo', requireAuth, (req, res) => {
   });
 });
 
+// Delete account and all associated data
+app.post('/account/delete', requireAuth, (req, res) => {
+  const { confirm_email } = req.body;
+  if (!confirm_email || confirm_email.toLowerCase().trim() !== req.account.email.toLowerCase()) {
+    return res.redirect('/account?error=Email confirmation did not match');
+  }
+  // Delete all claims by this account
+  db.prepare('DELETE FROM claims WHERE account_id = ?').run(req.account.id);
+  // Delete all event updates for events owned by this account
+  const events = db.prepare('SELECT id FROM events WHERE account_id = ?').all(req.account.id);
+  for (const e of events) {
+    db.prepare('DELETE FROM event_updates WHERE event_id = ?').run(e.id);
+    db.prepare('DELETE FROM claims WHERE event_id = ?').run(e.id);
+    db.prepare('DELETE FROM tasks WHERE event_id = ?').run(e.id);
+  }
+  db.prepare('DELETE FROM events WHERE account_id = ?').run(req.account.id);
+  // Delete profile photo
+  if (req.account.profile_pic) {
+    try { require('fs').unlinkSync('public' + req.account.profile_pic); } catch(e) {}
+  }
+  // Delete the account
+  db.prepare('DELETE FROM accounts WHERE id = ?').run(req.account.id);
+  res.clearCookie('gr_auth');
+  res.redirect('/?deleted=1');
+});
+
 app.post('/account/photo/remove', requireAuth, (req, res) => {
   const pic = req.account.profile_pic;
   if (pic) {
@@ -1377,14 +1420,29 @@ app.get('/explore', (req, res) => {
   res.render('explore', { events: eventData, q, sort, account });
 });
 
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many login attempts. Try again in 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 function adminAuth(req, res, next) {
+  if (!ADMIN_PASS) return res.status(503).send('Admin panel disabled — set ADMIN_PASS env var');
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Basic ')) return res.set('WWW-Authenticate','Basic realm="GetRallied Admin"').status(401).send('Unauthorized');
   const decoded = Buffer.from(auth.slice(6), 'base64').toString();
   const colon = decoded.indexOf(':');
-  if (decoded.slice(0, colon) === 'jason' && decoded.slice(colon+1) === ADMIN_PASS) return next();
+  const user = decoded.slice(0, colon);
+  const pass = decoded.slice(colon + 1);
+  const passHash = crypto.createHash('sha256').update(pass).digest();
+  const expectedHash = crypto.createHash('sha256').update(ADMIN_PASS).digest();
+  if (user === (process.env.ADMIN_USER || 'admin') && pass.length > 0 && crypto.timingSafeEqual(passHash, expectedHash)) return next();
   return res.set('WWW-Authenticate','Basic realm="GetRallied Admin"').status(401).send('Unauthorized');
 }
+
+app.use('/admin', adminLimiter);
 
 app.get('/admin', adminAuth, (req, res) => {
   const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC').all();

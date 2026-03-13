@@ -545,6 +545,18 @@ input:focus,select:focus{border-color:#111111}
   </div>
 </div>
 
+<%# Danger zone %>
+<div style="max-width:700px;margin:32px auto;padding:0 24px">
+  <div style="border:1.5px solid #fecaca;padding:20px 22px;border-radius:4px">
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;color:#b91c1c">⚠️ Danger Zone</h3>
+    <p style="color:#777;font-size:13px;margin-bottom:16px">Permanently delete this event and all associated data (tasks, claims, uploads). This cannot be undone.</p>
+    <form method="POST" action="/organizer/<%= event.organizer_token %>/delete-event" onsubmit="return confirm('Are you absolutely sure? This will permanently delete this event, all tasks, all volunteer data, and all uploads. This CANNOT be undone.')">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <button type="submit" style="background:#fff;color:#b91c1c;border:1.5px solid #fecaca;padding:8px 18px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">Delete this event permanently</button>
+    </form>
+  </div>
+</div>
+
 <script>
 (function(){
   const token = '<%= event.organizer_token %>';
