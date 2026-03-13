@@ -491,14 +491,19 @@ app.post('/create', async (req, res) => {
   const { title, vision, date, location, organizer_name, organizer_email, is_private } = req.body;
   if (!title || !vision) return res.status(400).send('Title and vision required');
   try {
-    const breakdown = await breakdownVision(vision, title, date || 'TBD', location || 'TBD');
+    let breakdown = { tasks: [] };
+    try {
+      breakdown = await breakdownVision(vision, title, date || 'TBD', location || 'TBD');
+    } catch(aiErr) {
+      console.error('AI task breakdown failed (continuing without tasks):', aiErr.message);
+    }
     const eventId = genId(8);
     const organizerToken = genSecureToken(24);
     const isPrivate = is_private === '1' ? 1 : 0;
 
     const account = getAccount(req);
-    db.prepare(`INSERT INTO events (id,organizer_token,title,description,vision,date,location,organizer_name,organizer_email,is_private,account_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(eventId, organizerToken, title.trim(), '', vision.trim(), date || '', location || '', organizer_name || '', organizer_email || NOTIFY_EMAIL, isPrivate, account ? account.id : null);
+    db.prepare(`INSERT INTO events (id,organizer_token,title,description,vision,date,location,organizer_name,organizer_email,is_private,account_id,date_iso,location_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(eventId, organizerToken, title.trim(), '', vision.trim(), date || '', location || '', organizer_name || '', organizer_email || NOTIFY_EMAIL, isPrivate, account ? account.id : null, date || null, location || null);
 
     (breakdown.tasks || []).forEach((t, i) => {
       db.prepare(`INSERT INTO tasks (id,event_id,title,description,category,quantity_needed,requires_approval,sort_order) VALUES (?,?,?,?,?,?,?,?)`)
